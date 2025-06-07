@@ -13,14 +13,18 @@ if DATABASE_URL:
 else:
     SRC_DB = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database.db')
     DB_PATH = os.path.join('/tmp', 'database.db')
+    USE_URI = False
     if not os.path.exists(DB_PATH):
         import shutil
         shutil.copy(SRC_DB, DB_PATH)
-    USE_URI = False
 
 def get_db():
     if 'db' not in g:
-        conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES, uri=bool(DATABASE_URL))
+        conn = sqlite3.connect(
+            DB_PATH,
+            detect_types=sqlite3.PARSE_DECLTYPES,
+            uri=USE_URI
+        )
         conn.row_factory = sqlite3.Row
         g.db = conn
     return g.db
@@ -97,7 +101,8 @@ def init_db():
     ''')
 
     db.commit()
-
+    
+    
 def login_required(fn):
     from functools import wraps
     @wraps(fn)
