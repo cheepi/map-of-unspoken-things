@@ -10,7 +10,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Models
+# models
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -43,9 +43,31 @@ class EntryTag(db.Model):
     entry_id = db.Column(db.Integer, db.ForeignKey('entries.id'), primary_key=True)
     tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), primary_key=True)
 
+class UserSummary(db.Model):
+    __tablename__ = 'user_summary'
+    __table_args__ = {'extend_existing': True}
+    user_id     = db.Column(db.Integer, primary_key=True)
+    username    = db.Column(db.String)
+    entry_count = db.Column(db.Integer)
+    tag_count   = db.Column(db.Integer)
+
 # Initialize DB
 with app.app_context():
     db.create_all()
+    db.session.execute('''
+        CREATE VIEW IF NOT EXISTS user_summary AS
+        SELECT
+            u.id               AS user_id,
+            u.username         AS username,
+            COUNT(DISTINCT e.id)   AS entry_count,
+            COUNT(DISTINCT t.id)   AS tag_count
+        FROM users u
+        LEFT JOIN entries e      ON u.id = e.user_id AND e.active = 1
+        LEFT JOIN entry_tags et  ON e.id = et.entry_id
+        LEFT JOIN tags t         ON et.tag_id = t.id
+        GROUP BY u.id;
+    ''')
+    db.session.commit()
 
 # Auth
 from functools import wraps
@@ -160,31 +182,45 @@ def entries():
 @login_required
 def add_entry():
     error = ''
-    if request.method=='POST':
+    if request.method == 'POST':
         title = request.form['title'].strip()
         if not title:
-            error='Judul wajib diisi.'
-        else:
-            entry = Entry(
-                user_id=session['user_id'],
-                title=title,
-                description=request.form['description'].strip(),
-                image_url=request.form['image_url'].strip(),
-                gmaps_link=request.form['gmaps_link'].strip(),
-                pin_color=request.form['pin_color'].strip() or '#cccccc'
-            )
-            lat,lon = extract_lat_lon_from_gmaps(entry.gmaps_link)
-            if lat is not None and lon is not None:
-                entry.latitude, entry.longitude = lat, lon
-            tags_raw = request.form['tags'].split(',')
-            for t in tags_raw:
-                name = t.strip().lower()
-                if name:
-                    tag = Tag.query.filter_by(name=name).first() or Tag(name=name)
-                    entry.tags.append(tag)
-            db.session.add(entry)
-            db.session.commit()
-            return redirect(url_for('home'))
+            error = 'Judul wajib diisi.'
+            return render_template('add_entry.html', error=error)
+
+        entry = Entry(
+            user_id=session['user_id'],
+            title=title,
+            description=request.form['description'].strip(),
+            image_url=request.form['image_url'].strip(),
+            gmaps_link=request.form['gmaps_link'].strip(),
+            pin_color=request.form['pin_color'].strip() or '#cccccc'
+        )
+
+        # parse dari gmaps_link
+        lat_val, lon_val = extract_lat_lon_from_gmaps(entry.gmaps_link)
+        # override kalau ada klik peta (field lat/lon)
+        lat = request.form.get('lat','').strip()
+        lon = request.form.get('lon','').strip()
+        if lat and lon:
+            try:
+                lat_val, lon_val = float(lat), float(lon)
+            except ValueError:
+                pass
+        entry.latitude, entry.longitude = lat_val, lon_val
+
+        # proses tags
+        tags_raw = request.form['tags'].split(',')
+        for t in tags_raw:
+            name = t.strip().lower()
+            if name:
+                tag = Tag.query.filter_by(name=name).first() or Tag(name=name)
+                entry.tags.append(tag)
+
+        db.session.add(entry)
+        db.session.commit()
+        return redirect(url_for('home'))
+
     return render_template('add_entry.html', error=error)
 
 @app.route('/edit_entry/<int:id>', methods=['GET','POST'])
@@ -193,62 +229,103 @@ def edit_entry(id):
     entry = Entry.query.get_or_404(id)
     if entry.user_id != session['user_id']:
         return redirect(url_for('entries'))
+
     error = ''
-    if request.method=='POST':
+    if request.method == 'POST':
         title = request.form['title'].strip()
         if not title:
-            error='Judul wajib diisi.'
-        else:
-            entry.title = title
-            entry.description = request.form['description'].strip()
-            entry.image_url = request.form['image_url'].strip()
-            entry.gmaps_link = request.form['gmaps_link'].strip()
-            entry.pin_color = request.form['pin_color'].strip() or '#cccccc'
-            lat,lon = extract_lat_lon_from_gmaps(entry.gmaps_link)
-            if lat is not None and lon is not None:
-                entry.latitude, entry.longitude = lat, lon
-            entry.tags.clear()
-            for name in request.form['tags'].split(','):
-                n = name.strip().lower()
-                if n:
-                    tag = Tag.query.filter_by(name=n).first() or Tag(name=n)
-                    entry.tags.append(tag)
-            db.session.commit()
-            return redirect(url_for('entries'))
-    existing_tags = ','.join([t.name for t in entry.tags])
-    return render_template('edit_entry.html', entry=entry, existing_tags=existing_tags, error=error)
+            error = 'Judul wajib diisi.'
+            return render_template('edit_entry.html',
+                                   entry=entry,
+                                   existing_tags=', '.join([t.name for t in entry.tags]),
+                                   error=error)
+
+        entry.title       = title
+        entry.description = request.form['description'].strip()
+        entry.image_url   = request.form['image_url'].strip()
+        entry.gmaps_link  = request.form['gmaps_link'].strip()
+        entry.pin_color   = request.form['pin_color'].strip() or '#cccccc'
+
+        # parse dari gmaps_link
+        lat_val, lon_val = extract_lat_lon_from_gmaps(entry.gmaps_link)
+        # override kalau ada klik peta
+        lat = request.form.get('lat','').strip()
+        lon = request.form.get('lon','').strip()
+        if lat and lon:
+            try:
+                lat_val, lon_val = float(lat), float(lon)
+            except ValueError:
+                pass
+        entry.latitude, entry.longitude = lat_val, lon_val
+
+        # update tags
+        entry.tags.clear()
+        for name in request.form['tags'].split(','):
+            n = name.strip().lower()
+            if n:
+                tag = Tag.query.filter_by(name=n).first() or Tag(name=n)
+                entry.tags.append(tag)
+
+        db.session.commit()
+        return redirect(url_for('entries'))
+
+    existing_tags = ', '.join([t.name for t in entry.tags])
+    return render_template('edit_entry.html',
+                           entry=entry,
+                           existing_tags=existing_tags,
+                           error=error)
 
 @app.route('/delete_entry/<int:id>', methods=['POST'])
 @login_required
 def delete_entry(id):
     entry = Entry.query.get_or_404(id)
     if entry.user_id == session['user_id']:
+        # soft-delete
         entry.active = False
+        # clear pivot di entry_tags
+        entry.tags.clear()
         db.session.commit()
     return redirect(url_for('entries'))
 
 @app.route('/profile', methods=['GET','POST'])
 @login_required
 def profile():
-    user = User.query.get(session['user_id'])
+    user_id = session['user_id']
+    # ambil ringkasan dari view
+    summary = UserSummary.query.filter_by(user_id=user_id).first()
+    if not summary:
+        return redirect(url_for('logout'))
+
+    user = User.query.get(user_id)
     error = ''
-    if request.method=='POST':
-        uname = request.form['username'].strip()
-        pwd   = request.form['password'].strip()
-        pic   = request.form['profile_pic'].strip() or None
-        if uname and uname != user.username and User.query.filter_by(username=uname).first():
+    if request.method == 'POST':
+        new_username = request.form['username'].strip()
+        new_password = request.form['password'].strip()
+        new_pic     = request.form['profile_pic'].strip() or None
+
+        # cek unik username
+        if new_username and new_username != user.username and User.query.filter_by(username=new_username).first():
             error = 'Username sudah dipakai.'
         else:
-            user.username = uname or user.username
-            user.password = pwd or user.password
-            user.profile_pic = pic
+            user.username   = new_username or user.username
+            user.password   = new_password or user.password
+            user.profile_pic = new_pic
             db.session.commit()
-    entries_count = len([e for e in user.entries if e.active])
-    tags_count    = len({t.id for e in user.entries if e.active for t in e.tags})
+
+            # refresh summary setelah update
+            summary = UserSummary.query.filter_by(user_id=user_id).first()
+            popup_message = 'profil berhasil diperbarui.'
+            return render_template('profile.html',
+                                   user=user,
+                                   entry_count=summary.entry_count,
+                                   tag_count=summary.tag_count,
+                                   error='',
+                                   popup_message=popup_message)
+
     return render_template('profile.html',
                            user=user,
-                           entry_count=entries_count,
-                           tag_count=tags_count,
+                           entry_count=summary.entry_count,
+                           tag_count=summary.tag_count,
                            error=error)
 
 @app.route('/delete_profile', methods=['POST'])
