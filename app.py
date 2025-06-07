@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 import os
 import re
+from sqlalchemy import text
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
@@ -54,7 +55,7 @@ class UserSummary(db.Model):
 # Initialize DB
 with app.app_context():
     db.create_all()
-    db.session.execute('''
+    db.session.execute(text('''
         CREATE VIEW IF NOT EXISTS user_summary AS
         SELECT
             u.id               AS user_id,
@@ -66,7 +67,7 @@ with app.app_context():
         LEFT JOIN entry_tags et  ON e.id = et.entry_id
         LEFT JOIN tags t         ON et.tag_id = t.id
         GROUP BY u.id;
-    ''')
+    '''))
     db.session.commit()
 
 # Auth
