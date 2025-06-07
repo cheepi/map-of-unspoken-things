@@ -4,13 +4,12 @@ import os
 import re
 from flask_sqlalchemy import SQLAlchemy
 
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') \
     or f'sqlite:////tmp/database.db'
 db = SQLAlchemy(app)
-
-
-app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
