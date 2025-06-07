@@ -4,7 +4,6 @@ import os
 import re
 
 app = Flask(__name__)
-app.secret_key = 'secretbro123'
 # simpan DB di /tmp (writable)
 SRC_DB = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database.db')
 DATABASE = os.path.join('/tmp', 'database.db')
