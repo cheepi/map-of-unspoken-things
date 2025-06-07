@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Entry — Map of Unspoken Things</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        form {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: var(--color-bg-secondary);
+            padding: 20px;
+            border-radius: var(--radius);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        }
+        input, textarea {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: var(--color-bg-main);
+            color: var(--color-text);
+            border: 1px solid var(--color-text-secondary);
+            border-radius: var(--radius);
+        }
+        label {
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+            color: var(--color-text);
+        }
+        #map {
+            width: 100%;
+            height: 300px;
+            margin-bottom: 10px;
+            border-radius: var(--radius);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        }
+        .error {
+            color: red;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a class="logo" href="{{ url_for('home') }}">MOUThings</a>
+        <div class="burger" onclick="toggleNav()">
+            <div></div><div></div><div></div>
+        </div>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('entries') }}">My Entries</a></li>
+            <li><a href="{{ url_for('add_entry') }}">Create New Entry</a></li>
+            <li><a href="{{ url_for('profile') }}">My Profile</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        </ul>
+    </nav>
+
+    <h2 style="text-align:center; margin-top:80px;">Edit Entry</h2>
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('edit_entry', id=entry.id) }}">
+        <label for="title">Judul *</label>
+        <input type="text" id="title" name="title" required value="{{ entry.title if entry else '' }}">
+
+        <label for="description">Deskripsi (opsional)</label>
+        <textarea id="description" name="description" rows="4">{{ entry.description if entry else '' }}</textarea>
+
+        <label for="image_url">Link Gambar (opsional)</label>
+        <input type="text" id="image_url" name="image_url" value="{{ entry.image_url if entry and entry.image_url else '' }}">
+
+        <label for="gmaps_link">Google Maps Link (opsional)</label>
+        <input type="text" id="gmaps_link" name="gmaps_link" placeholder="https://www.google.com/maps/@-6.2,106.8,15z"
+               value="{{ entry.gmaps_link if entry and entry.gmaps_link else '' }}">
+
+        <label for="lat">Latitude (angka/otomatis dari peta)</label>
+        <input type="text" id="lat" name="lat" readonly value="{{ entry.latitude if entry and entry.latitude is not none else '' }}">
+
+        <label for="lon">Longitude (angka/otomatis dari peta)</label>
+        <input type="text" id="lon" name="lon" readonly value="{{ entry.longitude if entry and entry.longitude is not none else '' }}">
+
+        <label for="pin_color">Warna Pin</label>
+        <input type="color" id="pin_color" name="pin_color" value="{{ entry.pin_color if entry and entry.pin_color else '#cccccc' }}">
+
+        <label for="tags">Tags (pisahkan dengan koma)</label>
+        <input type="text" id="tags" name="tags" value="{{ existing_tags }}">
+
+        <div id="map"></div>
+
+        <button type="submit" style="padding:10px 20px; background-color: var(--color-accent); color:#fff; border:none; border-radius:var(--radius); cursor:pointer;">
+            Update Entry
+        </button>
+    </form>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // default koordinat
+        const defaultLat = -6.200000;
+        const defaultLon = 106.816666;
+
+        // ambil nilai awal lat/lon dari input (jika ada)
+        const initLat = document.getElementById('lat').value ? parseFloat(document.getElementById('lat').value) : defaultLat;
+        const initLon = document.getElementById('lon').value ? parseFloat(document.getElementById('lon').value) : defaultLon;
+
+        // inisialisasi peta
+        const map = L.map('map').setView([initLat, initLon], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        // marker awal (jika ada lat/lon)
+        let marker = null;
+        if (document.getElementById('lat').value && document.getElementById('lon').value) {
+            marker = L.marker([initLat, initLon]).addTo(map);
+        }
+
+        // klik peta → update lat/lon & marker
+        map.on('click', e => {
+            const { lat, lng } = e.latlng;
+            document.getElementById('lat').value = lat.toFixed(6);
+            document.getElementById('lon').value = lng.toFixed(6);
+            if (marker) {
+                marker.setLatLng(e.latlng);
+            } else {
+                marker = L.marker(e.latlng).addTo(map);
+            }
+        });
+
+        // saat user ubah Google Maps Link → parsing lat/lon
+        document.getElementById('gmaps_link').addEventListener('change', function() {
+            const url = this.value.trim();
+            let latlon = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) 
+                      || url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+            if (latlon) {
+                const lat = parseFloat(latlon[1]);
+                const lon = parseFloat(latlon[2]);
+                document.getElementById('lat').value = lat.toFixed(6);
+                document.getElementById('lon').value = lon.toFixed(6);
+                const newLatLng = L.latLng(lat, lon);
+                if (marker) {
+                    marker.setLatLng(newLatLng);
+                } else {
+                    marker = L.marker(newLatLng).addTo(map);
+                }
+                map.setView(newLatLng, 10);
+            }
+        });
+
+        function toggleNav() {
+            document.querySelector('.nav-links').classList.toggle('nav-active');
+            document.querySelector('.burger').classList.toggle('toggle');
+        }
+    </script>
+</body>
+</html>
