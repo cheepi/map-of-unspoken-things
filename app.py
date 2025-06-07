@@ -57,7 +57,7 @@ class UserSummary(db.Model):
 # Initialize DB
 with app.app_context():
     db.create_all()
-    db.session.execute(text('DROP TABLE IF EXISTS user_summary CASCADE;'))
+    db.session.execute(text('DROP VIEW IF EXISTS user_summary CASCADE;'))
     db.session.execute(text('''
         CREATE OR REPLACE VIEW user_summary AS
         SELECT
