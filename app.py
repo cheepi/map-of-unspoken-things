@@ -2,6 +2,12 @@ from flask import Flask, render_template, request, redirect, session, url_for, g
 import sqlite3
 import os
 import re
+from flask_sqlalchemy import SQLAlchemy
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') \
+    or f'sqlite:////tmp/database.db'
+db = SQLAlchemy(app)
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
