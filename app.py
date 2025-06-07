@@ -3,6 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 import re
 from sqlalchemy import text
+from sqlalchemy.orm import joinedload
+from sqlalchemy import inspect
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
@@ -138,38 +140,50 @@ def logout():
 @app.route('/home')
 @login_required
 def home():
-    from sqlalchemy import inspect
+    # helper buat convert ORM obj → dict + nambahin user data
+    def to_dict(e):
+        base = {c.key: getattr(e, c.key) for c in inspect(e).mapper.column_attrs}
+        # ambil username & profile_pic dari relationship user
+        base['username']    = e.user.username
+        base['profile_pic'] = e.user.profile_pic
+        return base
 
-    def to_dict(obj):
-        return {c.key: getattr(obj, c.key) for c in inspect(obj).mapper.column_attrs}
-
+    # ambil user sekarang
     current_user = User.query.get(session['user_id'])
-    user_entries = Entry.query.filter_by(user_id=current_user.id, active=True)\
-                              .order_by(Entry.id.desc()).all()
 
+    # Sidebar: entri user sendiri
+    user_entries = (Entry.query
+        .filter_by(user_id=current_user.id, active=True)
+        .order_by(Entry.id.desc())
+        .all()
+    )
+
+    # Semua entri (utama), eager‐load User biar nggak n+1 query
     q = request.args.get('q','').strip().lower()
+    query_base = Entry.query.options(joinedload(Entry.user)).filter(Entry.active==True)
+
     if q:
         like = f"%{q}%"
-        all_entries = Entry.query.join(User).outerjoin(EntryTag).outerjoin(Tag).filter(
-            Entry.active==True,
+        # join tag & user untuk search
+        query_base = query_base.join(User).outerjoin(EntryTag).outerjoin(Tag).filter(
             (User.username.ilike(like))|
             (Entry.title.ilike(like))|
             (Entry.description.ilike(like))|
             (Tag.name.ilike(like))
-        ).order_by(Entry.id.desc()).all()
-    else:
-        all_entries = Entry.query.filter_by(active=True).order_by(Entry.id.desc()).all()
+        )
+    all_entries = query_base.order_by(Entry.id.desc()).all()
 
+    # Convert ke JSON list
     json_user_entries = [to_dict(e) for e in user_entries]
     json_all_entries  = [to_dict(e) for e in all_entries]
 
     return render_template('home.html',
-        user_entries=user_entries,
-        json_user_entries=json_user_entries,
-        all_entries=all_entries,
-        json_all_entries=json_all_entries,
-        username=current_user.username,
-        query=q
+        user_entries      = user_entries,
+        json_user_entries = json_user_entries,
+        all_entries       = all_entries,
+        json_all_entries  = json_all_entries,
+        username          = current_user.username,
+        query             = q
     )
 
 @app.route('/entries')
