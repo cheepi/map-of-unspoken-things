@@ -14,11 +14,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # models
-entry_tags = db.Table('entry_tags',
-    db.Column('entry_id', db.Integer, db.ForeignKey('entries.id'), primary_key=True),
-    db.Column('tag_id',   db.Integer, db.ForeignKey('tags.id'),    primary_key=True)
-)
-
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
