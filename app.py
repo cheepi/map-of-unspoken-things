@@ -114,8 +114,15 @@ def logout():
 @app.route('/home')
 @login_required
 def home():
+    from sqlalchemy import inspect
+
+    def to_dict(obj):
+        return {c.key: getattr(obj, c.key) for c in inspect(obj).mapper.column_attrs}
+
     current_user = User.query.get(session['user_id'])
-    user_entries = Entry.query.filter_by(user_id=current_user.id, active=True).order_by(Entry.id.desc()).all()
+    user_entries = Entry.query.filter_by(user_id=current_user.id, active=True)\
+                              .order_by(Entry.id.desc()).all()
+
     q = request.args.get('q','').strip().lower()
     if q:
         like = f"%{q}%"
@@ -128,13 +135,25 @@ def home():
         ).order_by(Entry.id.desc()).all()
     else:
         all_entries = Entry.query.filter_by(active=True).order_by(Entry.id.desc()).all()
-    return render_template('home.html', user_entries=user_entries, all_entries=all_entries, username=current_user.username, query=q)
+
+    json_user_entries = [to_dict(e) for e in user_entries]
+    json_all_entries  = [to_dict(e) for e in all_entries]
+
+    return render_template('home.html',
+        user_entries=user_entries,
+        json_user_entries=json_user_entries,
+        all_entries=all_entries,
+        json_all_entries=json_all_entries,
+        username=current_user.username,
+        query=q
+    )
 
 @app.route('/entries')
 @login_required
 def entries():
     current_user = User.query.get(session['user_id'])
-    entries = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.id.desc()).all()
+    entries = Entry.query.filter_by(user_id=current_user.id)\
+                        .order_by(Entry.id.desc()).all()
     return render_template('entries.html', entries=entries)
 
 @app.route('/add_entry', methods=['GET','POST'])
@@ -155,13 +174,13 @@ def add_entry():
                 pin_color=request.form['pin_color'].strip() or '#cccccc'
             )
             lat,lon = extract_lat_lon_from_gmaps(entry.gmaps_link)
-            if lat and lon:
+            if lat is not None and lon is not None:
                 entry.latitude, entry.longitude = lat, lon
             tags_raw = request.form['tags'].split(',')
             for t in tags_raw:
-                name=t.strip().lower()
+                name = t.strip().lower()
                 if name:
-                    tag=Tag.query.filter_by(name=name).first() or Tag(name=name)
+                    tag = Tag.query.filter_by(name=name).first() or Tag(name=name)
                     entry.tags.append(tag)
             db.session.add(entry)
             db.session.commit()
@@ -172,7 +191,7 @@ def add_entry():
 @login_required
 def edit_entry(id):
     entry = Entry.query.get_or_404(id)
-    if entry.user_id!=session['user_id']:
+    if entry.user_id != session['user_id']:
         return redirect(url_for('entries'))
     error = ''
     if request.method=='POST':
@@ -180,58 +199,62 @@ def edit_entry(id):
         if not title:
             error='Judul wajib diisi.'
         else:
-            entry.title=title
-            entry.description=request.form['description'].strip()
-            entry.image_url=request.form['image_url'].strip()
-            entry.gmaps_link=request.form['gmaps_link'].strip()
-            entry.pin_color=request.form['pin_color'].strip() or '#cccccc'
-            lat,lon=extract_lat_lon_from_gmaps(entry.gmaps_link)
-            if lat and lon:
-                entry.latitude,entry.longitude=lat,lon
-            entry.tags=[]
+            entry.title = title
+            entry.description = request.form['description'].strip()
+            entry.image_url = request.form['image_url'].strip()
+            entry.gmaps_link = request.form['gmaps_link'].strip()
+            entry.pin_color = request.form['pin_color'].strip() or '#cccccc'
+            lat,lon = extract_lat_lon_from_gmaps(entry.gmaps_link)
+            if lat is not None and lon is not None:
+                entry.latitude, entry.longitude = lat, lon
+            entry.tags.clear()
             for name in request.form['tags'].split(','):
-                n=name.strip().lower()
+                n = name.strip().lower()
                 if n:
-                    tag=Tag.query.filter_by(name=n).first() or Tag(name=n)
+                    tag = Tag.query.filter_by(name=n).first() or Tag(name=n)
                     entry.tags.append(tag)
             db.session.commit()
             return redirect(url_for('entries'))
-    existing_tags=','.join([t.name for t in entry.tags])
+    existing_tags = ','.join([t.name for t in entry.tags])
     return render_template('edit_entry.html', entry=entry, existing_tags=existing_tags, error=error)
 
 @app.route('/delete_entry/<int:id>', methods=['POST'])
 @login_required
 def delete_entry(id):
-    entry=Entry.query.get_or_404(id)
-    if entry.user_id==session['user_id']:
-        entry.active=False
+    entry = Entry.query.get_or_404(id)
+    if entry.user_id == session['user_id']:
+        entry.active = False
         db.session.commit()
     return redirect(url_for('entries'))
 
 @app.route('/profile', methods=['GET','POST'])
 @login_required
 def profile():
-    user=User.query.get(session['user_id'])
-    error=''
+    user = User.query.get(session['user_id'])
+    error = ''
     if request.method=='POST':
-        uname=request.form['username'].strip()
-        pwd=request.form['password'].strip()
-        pic=request.form['profile_pic'].strip() or None
-        if uname and uname!=user.username and User.query.filter_by(username=uname).first():
-            error='Username sudah dipakai.'
+        uname = request.form['username'].strip()
+        pwd   = request.form['password'].strip()
+        pic   = request.form['profile_pic'].strip() or None
+        if uname and uname != user.username and User.query.filter_by(username=uname).first():
+            error = 'Username sudah dipakai.'
         else:
-            user.username=uname or user.username
-            user.password=pwd or user.password
-            user.profile_pic=pic
+            user.username = uname or user.username
+            user.password = pwd or user.password
+            user.profile_pic = pic
             db.session.commit()
-    entries_count=len([e for e in user.entries if e.active])
-    tags_count=len(set(t.id for e in user.entries for t in e.tags if e.active))
-    return render_template('profile.html', user=user, entry_count=entries_count, tag_count=tags_count, error=error)
+    entries_count = len([e for e in user.entries if e.active])
+    tags_count    = len({t.id for e in user.entries if e.active for t in e.tags})
+    return render_template('profile.html',
+                           user=user,
+                           entry_count=entries_count,
+                           tag_count=tags_count,
+                           error=error)
 
 @app.route('/delete_profile', methods=['POST'])
 @login_required
 def delete_profile():
-    user=User.query.get(session['user_id'])
+    user = User.query.get(session['user_id'])
     db.session.delete(user)
     db.session.commit()
     session.clear()
