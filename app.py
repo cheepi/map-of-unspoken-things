@@ -44,9 +44,7 @@ class EntryTag(db.Model):
     tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), primary_key=True)
 
 # Initialize DB
-tag_list = []
-@app.before_first_request
-def init_db():
+with app.app_context():
     db.create_all()
 
 # Auth
