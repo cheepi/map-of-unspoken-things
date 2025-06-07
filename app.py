@@ -55,15 +55,16 @@ class UserSummary(db.Model):
 # Initialize DB
 with app.app_context():
     db.create_all()
+    
     db.session.execute(text('''
-        CREATE VIEW IF NOT EXISTS user_summary AS
+        CREATE OR REPLACE VIEW user_summary AS
         SELECT
             u.id               AS user_id,
             u.username         AS username,
             COUNT(DISTINCT e.id)   AS entry_count,
             COUNT(DISTINCT t.id)   AS tag_count
         FROM users u
-        LEFT JOIN entries e      ON u.id = e.user_id AND e.active = 1
+        LEFT JOIN entries e      ON u.id = e.user_id AND e.active = true
         LEFT JOIN entry_tags et  ON e.id = et.entry_id
         LEFT JOIN tags t         ON et.tag_id = t.id
         GROUP BY u.id;
