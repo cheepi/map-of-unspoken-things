@@ -14,6 +14,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # models
+entry_tags = db.Table('entry_tags',
+    db.Column('entry_id', db.Integer, db.ForeignKey('entries.id'), primary_key=True),
+    db.Column('tag_id',   db.Integer, db.ForeignKey('tags.id'),    primary_key=True)
+)
+
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -189,10 +194,12 @@ def home():
 @app.route('/entries')
 @login_required
 def entries():
-    current_user = User.query.get(session['user_id'])
-    entries = Entry.query.filter_by(user_id=current_user.id)\
-                        .order_by(Entry.id.desc()).all()
-    return render_template('entries.html', entries=entries)
+    ents = Entry.query.filter_by(user_id=session['user_id'])\
+                      .order_by(Entry.id.desc()).all()
+    json_list = [{c.key: getattr(e, c.key) for c in inspect(e).mapper.column_attrs} for e in ents]
+    return render_template('entries.html',
+                           entries=ents,
+                           json_entries=json_list)
 
 @app.route('/add_entry', methods=['GET','POST'])
 @login_required
@@ -201,148 +208,144 @@ def add_entry():
     if request.method == 'POST':
         title = request.form['title'].strip()
         if not title:
-            error = 'Judul wajib diisi.'
-            return render_template('add_entry.html', error=error)
-
-        entry = Entry(
-            user_id=session['user_id'],
-            title=title,
-            description=request.form['description'].strip(),
-            image_url=request.form['image_url'].strip(),
-            gmaps_link=request.form['gmaps_link'].strip(),
-            pin_color=request.form['pin_color'].strip() or '#cccccc'
+            return render_template('add_entry.html', error='Judul wajib diisi.')
+        ent = Entry(
+            user_id    = session['user_id'],
+            title      = title,
+            description= request.form['description'].strip(),
+            image_url  = request.form['image_url'].strip(),
+            gmaps_link = request.form['gmaps_link'].strip(),
+            pin_color  = request.form['pin_color'].strip() or '#cccccc'
         )
-
-        # parse dari gmaps_link
-        lat_val, lon_val = extract_lat_lon_from_gmaps(entry.gmaps_link)
-        # override kalau ada klik peta (field lat/lon)
-        lat = request.form.get('lat','').strip()
-        lon = request.form.get('lon','').strip()
-        if lat and lon:
+        lat, lon = extract_lat_lon_from_gmaps(ent.gmaps_link)
+        if request.form.get('lat') and request.form.get('lon'):
             try:
-                lat_val, lon_val = float(lat), float(lon)
-            except ValueError:
-                pass
-        entry.latitude, entry.longitude = lat_val, lon_val
+                lat = float(request.form['lat']); lon = float(request.form['lon'])
+            except: pass
+        ent.latitude, ent.longitude = lat, lon
 
-        # proses tags
-        tags_raw = request.form['tags'].split(',')
-        for t in tags_raw:
+        for t in request.form['tags'].split(','):
             name = t.strip().lower()
-            if name:
-                tag = Tag.query.filter_by(name=name).first() or Tag(name=name)
-                entry.tags.append(tag)
+            if not name: continue
+            tag = Tag.query.filter_by(name=name).first() or Tag(name=name)
+            ent.tags.append(tag)
 
-        db.session.add(entry)
+        db.session.add(ent)
         db.session.commit()
         return redirect(url_for('home'))
-
-    return render_template('add_entry.html', error=error)
+    return render_template('add_entry.html', error='')
 
 @app.route('/edit_entry/<int:id>', methods=['GET','POST'])
 @login_required
 def edit_entry(id):
-    entry = Entry.query.get_or_404(id)
-    if entry.user_id != session['user_id']:
+    ent = Entry.query.get_or_404(id)
+    if ent.user_id != session['user_id']:
         return redirect(url_for('entries'))
+    existing_tags = ', '.join([t.name for t in ent.tags])
 
-    error = ''
     if request.method == 'POST':
         title = request.form['title'].strip()
         if not title:
-            error = 'Judul wajib diisi.'
-            return render_template('edit_entry.html',
-                                   entry=entry,
-                                   existing_tags=', '.join([t.name for t in entry.tags]),
-                                   error=error)
-
-        entry.title       = title
-        entry.description = request.form['description'].strip()
-        entry.image_url   = request.form['image_url'].strip()
-        entry.gmaps_link  = request.form['gmaps_link'].strip()
-        entry.pin_color   = request.form['pin_color'].strip() or '#cccccc'
-
-        # parse dari gmaps_link
-        lat_val, lon_val = extract_lat_lon_from_gmaps(entry.gmaps_link)
-        # override kalau ada klik peta
-        lat = request.form.get('lat','').strip()
-        lon = request.form.get('lon','').strip()
-        if lat and lon:
+            return render_template('edit_entry.html', entry=ent, existing_tags=existing_tags, error='Judul wajib diisi.')
+        ent.title       = title
+        ent.description = request.form['description'].strip()
+        ent.image_url   = request.form['image_url'].strip()
+        ent.gmaps_link  = request.form['gmaps_link'].strip()
+        ent.pin_color   = request.form['pin_color'].strip() or '#cccccc'
+        lat, lon = extract_lat_lon_from_gmaps(ent.gmaps_link)
+        if request.form.get('lat') and request.form.get('lon'):
             try:
-                lat_val, lon_val = float(lat), float(lon)
-            except ValueError:
-                pass
-        entry.latitude, entry.longitude = lat_val, lon_val
+                lat = float(request.form['lat']); lon = float(request.form['lon'])
+            except: pass
+        ent.latitude, ent.longitude = lat, lon
 
-        # update tags
-        entry.tags.clear()
+        ent.tags.clear()
         for name in request.form['tags'].split(','):
             n = name.strip().lower()
-            if n:
-                tag = Tag.query.filter_by(name=n).first() or Tag(name=n)
-                entry.tags.append(tag)
+            if not n: continue
+            tag = Tag.query.filter_by(name=n).first() or Tag(name=n)
+            ent.tags.append(tag)
 
         db.session.commit()
         return redirect(url_for('entries'))
 
-    existing_tags = ', '.join([t.name for t in entry.tags])
-    return render_template('edit_entry.html',
-                           entry=entry,
-                           existing_tags=existing_tags,
-                           error=error)
+    return render_template('edit_entry.html', entry=ent, existing_tags=existing_tags, error='')
+    
 
 @app.route('/delete_entry/<int:id>', methods=['POST'])
 @login_required
 def delete_entry(id):
     entry = Entry.query.get_or_404(id)
     if entry.user_id == session['user_id']:
-        # soft-delete
         entry.active = False
-        # clear pivot di entry_tags
         entry.tags.clear()
         db.session.commit()
     return redirect(url_for('entries'))
 
-@app.route('/profile', methods=['GET','POST'])
+@app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
-    user_id = session['user_id']
-    # ambil ringkasan dari view
-    summary = UserSummary.query.filter_by(user_id=user_id).first()
-    if not summary:
+    # pakai raw SQL untuk ambil user + summary dari VIEW
+    row = db.session.execute(text('''
+        SELECT
+            u.id, u.username, u.password, u.profile_pic,
+            us.entry_count, us.tag_count
+        FROM users u
+        JOIN user_summary us ON u.id = us.user_id
+        WHERE u.id = :uid
+    '''), {'uid': session['user_id']}).mappings().first()
+
+    if not row:
         return redirect(url_for('logout'))
 
-    user = User.query.get(user_id)
     error = ''
     if request.method == 'POST':
         new_username = request.form['username'].strip()
         new_password = request.form['password'].strip()
-        new_pic     = request.form['profile_pic'].strip() or None
+        new_pic_url  = request.form['profile_pic'].strip() or None
 
-        # cek unik username
-        if new_username and new_username != user.username and User.query.filter_by(username=new_username).first():
+        # jika kosong, pakai yang lama
+        final_username = new_username or row['username']
+        final_password = new_password or row['password']
+
+        # cek unique username
+        if final_username != row['username'] and \
+           db.session.query(User).filter_by(username=final_username).first():
             error = 'Username sudah dipakai.'
-        else:
-            user.username   = new_username or user.username
-            user.password   = new_password or user.password
-            user.profile_pic = new_pic
-            db.session.commit()
+            return render_template('profile.html', user=row, error=error)
 
-            # refresh summary setelah update
-            summary = UserSummary.query.filter_by(user_id=user_id).first()
-            popup_message = 'profil berhasil diperbarui.'
-            return render_template('profile.html',
-                                   user=user,
-                                   entry_count=summary.entry_count,
-                                   tag_count=summary.tag_count,
-                                   error='',
-                                   popup_message=popup_message)
+        # update users
+        db.session.execute(text('''
+            UPDATE users
+               SET username    = :uname,
+                   password    = :pwd,
+                   profile_pic = :pic
+             WHERE id = :uid
+        '''), {
+            'uname': final_username,
+            'pwd':   final_password,
+            'pic':   new_pic_url,
+            'uid':   session['user_id']
+        })
+        db.session.commit()
 
-    return render_template('profile.html',
-                           user=user,
-                           entry_count=summary.entry_count,
-                           tag_count=summary.tag_count,
-                           error=error)
+        # ambil ulang data setelah update
+        row = db.session.execute(text('''
+            SELECT
+                u.id, u.username, u.password, u.profile_pic,
+                us.entry_count, us.tag_count
+            FROM users u
+            JOIN user_summary us ON u.id = us.user_id
+            WHERE u.id = :uid
+        '''), {'uid': session['user_id']}).mappings().first()
+
+        popup_message = 'Profil berhasil diperbarui.'
+        return render_template('profile.html',
+                               user=row,
+                               error='',
+                               popup_message=popup_message)
+
+    return render_template('profile.html', user=row, error=error)
 
 @app.route('/delete_profile', methods=['POST'])
 @login_required
