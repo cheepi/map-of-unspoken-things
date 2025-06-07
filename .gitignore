@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+database.db
+
+# Env
+.env
+
+# Editor
+.vscode/
+.idea/
