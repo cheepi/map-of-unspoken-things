@@ -5,14 +5,11 @@
     <title>Map of Unspoken Things</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* ───────────────────────────────────────────────────────────────────────────
-           Variabel CSS (pastikan di style.css Anda sudah mendefinisikan):
-        ─────────────────────────────────────────────────────────────────────────── */
         :root {
             --color-bg-main: #0d0d0d;
             --color-bg-secondary: #1a1a1a;
             --color-text: #ffffff;
-            --color-accent: #ff6b6b;          /* warna aksen neon */
+            --color-accent: #ff6b6b;
             --radius: 8px;
         }
 
@@ -20,22 +17,17 @@
             height: 100%;
         }
         body {
-            height: 100vh;             /* 100% tinggi viewport */
+            height: 100vh;
             margin: 0;
             font-family: Arial, sans-serif;
             background-color: var(--color-bg-main);
             color: var(--color-text);
 
-            /* 2. Jadikan Flex container untuk centering vertikal + horizontal */
             display: flex;
-            align-items: center;       /* centering vertikal */
-            justify-content: center;   /* centering horizontal */
-            text-align: center;        /* agar teks di dalamnya rata tengah */
+            align-items: center; 
+            justify-content: center;
+            text-align: center;
         }
-
-        /* ───────────────────────────────────────────────────────────────────────────
-           Container utama:
-        ─────────────────────────────────────────────────────────────────────────── */
         .landing-container {
             max-width: 600px;
             padding: 20px;
@@ -43,10 +35,7 @@
             background-color: var(--color-bg-secondary);
             box-shadow: 0 2px 8px rgba(0,0,0,0.6);
         }
-
-        /* ───────────────────────────────────────────────────────────────────────────
-           Judul neon dengan animasi glowy/flicker:
-        ─────────────────────────────────────────────────────────────────────────── */
+# title
 .neon-title {
     font-size: 2.5rem;
     color: var(--color-accent);
@@ -90,9 +79,6 @@
     }
 }
 
-        /* ───────────────────────────────────────────────────────────────────────────
-           Teks paragraf dan tombol di dalam landing-container:
-        ─────────────────────────────────────────────────────────────────────────── */
         .landing-container h1 {
             margin-bottom: 20px;
         }
@@ -116,19 +102,17 @@
         }
     </style>
 </head>
+    
 <body>
     <nav class="navbar">
-        <!-- Logo -->
         <a href="{{ url_for('home') }}" class="logo"> </a>
 
-        <!-- Ikon Burger (selalu tampil) -->
         <div class="burger" onclick="toggleNav()">
             <div></div>
             <div></div>
             <div></div>
         </div>
 
-        <!-- Daftar link (off-canvas, default tersembunyi) -->
         <ul class="nav-links">
             <li><a href="{{ url_for('root') }}">Home</a></li>
             <li><a href="{{ url_for('login') }}">Login</a></li>
