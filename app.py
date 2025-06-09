@@ -6,14 +6,17 @@ from sqlalchemy import text
 from sqlalchemy.orm import joinedload
 from sqlalchemy import inspect
 
+# inisialisasi app flask
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# database dengan orm
 db = SQLAlchemy(app)
 
 # models
+# user
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -22,6 +25,7 @@ class User(db.Model):
     profile_pic = db.Column(db.String)
     entries = db.relationship('Entry', backref='user', cascade='all, delete')
 
+# entry: post of unspoken thing(s)
 class Entry(db.Model):
     __tablename__ = 'entries'
     id = db.Column(db.Integer, primary_key=True)
@@ -36,6 +40,7 @@ class Entry(db.Model):
     active = db.Column(db.Boolean, default=True)
     tags = db.relationship('Tag', secondary='entry_tags', backref='entries')
 
+# tag: related things or thoughts terhadap postan user
 class Tag(db.Model):
     __tablename__ = 'tags'
     id = db.Column(db.Integer, primary_key=True)
@@ -46,6 +51,7 @@ class EntryTag(db.Model):
     entry_id = db.Column(db.Integer, db.ForeignKey('entries.id'), primary_key=True)
     tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), primary_key=True)
 
+# user stats: jumlah entry dan tag tiap user
 class UserSummary(db.Model):
     __tablename__ = 'user_summary'
     __table_args__ = {'extend_existing': True}
@@ -54,7 +60,7 @@ class UserSummary(db.Model):
     entry_count = db.Column(db.Integer)
     tag_count   = db.Column(db.Integer)
 
-# Initialize DB
+# inisialisasi db (with setup view sql untuk user stats)
 with app.app_context():
     db.create_all()
     db.session.execute(text('DROP VIEW IF EXISTS user_summary CASCADE;'))
@@ -73,7 +79,7 @@ with app.app_context():
     '''))
     db.session.commit()
 
-# Auth
+# auth: login required before accessing
 from functools import wraps
 
 def login_required(fn):
@@ -84,7 +90,7 @@ def login_required(fn):
         return fn(*args, **kwargs)
     return wrapper
 
-# Utility
+# extract koordinat dari link gmaps
 def extract_lat_lon_from_gmaps(url):
     m = re.search(r'/@(-?\d+\.\d+),(-?\d+\.\d+)', url)
     if m:
@@ -94,12 +100,13 @@ def extract_lat_lon_from_gmaps(url):
         return float(m2.group(1)), float(m2.group(2))
     return None, None
 
-# Routes
+# if user belum login, ke landing page, else home 
 @app.route('/')
 def root():
     if 'user_id' not in session:
         return render_template('index.html')
     return redirect(url_for('home'))
+
 
 @app.route('/register', methods=['GET','POST'])
 def register():
@@ -118,6 +125,7 @@ def register():
             return redirect(url_for('login'))
     return render_template('register.html', error=error)
 
+
 @app.route('/login', methods=['GET','POST'])
 def login():
     error = ''
@@ -132,15 +140,16 @@ def login():
         error = 'Username atau password salah.'
     return render_template('login.html', error=error)
 
+
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('root'))
 
+
 @app.route('/home')
 @login_required
 def home():
-    # helper buat convert ORM obj → dict + nambahin user data
     def to_dict(e):
         base = {c.key: getattr(e, c.key) for c in inspect(e).mapper.column_attrs}
         # ambil username & profile_pic dari relationship user
@@ -148,23 +157,22 @@ def home():
         base['profile_pic'] = e.user.profile_pic
         return base
 
-    # ambil user sekarang
+    # fetch user sekarang
     current_user = User.query.get(session['user_id'])
 
-    # Sidebar: entri user sendiri
+    # sidebar: entri user sendiri
     user_entries = (Entry.query
         .filter_by(user_id=current_user.id, active=True)
         .order_by(Entry.id.desc())
         .all()
     )
 
-    # Semua entri (utama), eager‐load User biar nggak n+1 query
+    # semua entri, eager‐load user biar ga n+1 query
     q = request.args.get('q','').strip().lower()
     query_base = Entry.query.options(joinedload(Entry.user)).filter(Entry.active==True)
 
     if q:
         like = f"%{q}%"
-        # join tag & user untuk search
         query_base = query_base.join(User).outerjoin(EntryTag).outerjoin(Tag).filter(
             (User.username.ilike(like))|
             (Entry.title.ilike(like))|
@@ -173,7 +181,7 @@ def home():
         )
     all_entries = query_base.order_by(Entry.id.desc()).all()
 
-    # Convert ke JSON list
+    # convert ke json list
     json_user_entries = [to_dict(e) for e in user_entries]
     json_all_entries  = [to_dict(e) for e in all_entries]
 
@@ -299,7 +307,7 @@ def profile():
         new_password = request.form['password'].strip()
         new_pic_url  = request.form['profile_pic'].strip() or None
 
-        # jika kosong, pakai yang lama
+        # if empty, pakai yang lama
         final_username = new_username or row['username']
         final_password = new_password or row['password']
 
