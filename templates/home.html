@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Home — Map of Unspoken Things</title>
+    <title>Home in Map of Unspoken Things</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -141,12 +141,10 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 1) Ambil JSON dari server
         const rawEntries = document.getElementById('entries-data').dataset.entries;
         const entries = JSON.parse(rawEntries);
         console.log("DEBUG: entries →", entries);
 
-        // 2) Default center
         const defaultLat = -6.200000;
         const defaultLon = 106.816666;
         let initLat = defaultLat, initLon = defaultLon;
@@ -155,13 +153,12 @@
             initLon = entries[0].longitude;
         }
 
-        // 3) Inisialisasi peta
         const map = L.map('map').setView([initLat, initLon], 5);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // 4) Loop untuk menambahkan marker
+        // loop menambahkan marker
         entries.forEach(item => {
             if (item.latitude !== null && item.longitude !== null) {
                 const bgColor = item.pin_color || '#cccccc';
@@ -181,7 +178,6 @@
                     popupAnchor: [20, -2]
                 });
 
-  
                 L.marker([item.latitude, item.longitude], { icon: icon })
                 .addTo(map)
                 .bindPopup(
