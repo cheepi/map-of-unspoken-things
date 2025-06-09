@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Edit Entry — Map of Unspoken Things</title>
+    <title>Edit Entry in Map of Unspoken Things</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -43,6 +43,7 @@
         }
     </style>
 </head>
+    
 <body>
     <nav class="navbar">
         <a class="logo" href="{{ url_for('home') }}">MOUThings</a>
@@ -98,25 +99,20 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // default koordinat
         const defaultLat = -6.200000;
         const defaultLon = 106.816666;
 
-        // ambil nilai awal lat/lon dari input (jika ada)
         const initLat = document.getElementById('lat').value ? parseFloat(document.getElementById('lat').value) : defaultLat;
         const initLon = document.getElementById('lon').value ? parseFloat(document.getElementById('lon').value) : defaultLon;
 
-        // inisialisasi peta
         const map = L.map('map').setView([initLat, initLon], 10);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        // marker awal (jika ada lat/lon)
         let marker = null;
         if (document.getElementById('lat').value && document.getElementById('lon').value) {
             marker = L.marker([initLat, initLon]).addTo(map);
         }
 
-        // klik peta → update lat/lon & marker
         map.on('click', e => {
             const { lat, lng } = e.latlng;
             document.getElementById('lat').value = lat.toFixed(6);
@@ -128,7 +124,6 @@
             }
         });
 
-        // saat user ubah Google Maps Link → parsing lat/lon
         document.getElementById('gmaps_link').addEventListener('change', function() {
             const url = this.value.trim();
             let latlon = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) 
