@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Add Entry — Map of Unspoken Things</title>
+    <title>Add Entry in Map of Unspoken Things</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -127,7 +127,6 @@
             }
         });
 
-        // Saat user ubah Google Maps Link → parsing lat/lon
         document.getElementById('gmaps_link').addEventListener('change', function() {
             const url = this.value.trim();
             let latlon = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) 
