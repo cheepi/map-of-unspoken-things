@@ -35,50 +35,6 @@
             background-color: var(--color-bg-secondary);
             box-shadow: 0 2px 8px rgba(0,0,0,0.6);
         }
-# title
-.neon-title {
-    font-size: 2.5rem;
-    color: var(--color-accent);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    position: relative;
-    display: inline-block;
-    text-shadow:
-        0 0 5px var(--color-accent),
-        0 0 10px var(--color-accent),
-        0 0 20px var(--color-accent),
-        0 0 40px rgba(255, 0, 73, 0.5),
-        0 0 80px rgba(255, 0, 73, 0.3);
-    animation: neon-flicker 3s infinite alternate;
-}
-
-@keyframes neon-flicker {
-    0% {
-        text-shadow:
-            0 0 3px var(--color-accent),
-            0 0 7px var(--color-accent),
-            0 0 15px var(--color-accent),
-            0 0 30px rgba(255, 0, 73, 0.4),
-            0 0 60px rgba(255, 0, 73, 0.2);
-    }
-    50% {
-        text-shadow:
-            0 0 7px var(--color-accent),
-            0 0 14px var(--color-accent),
-            0 0 28px var(--color-accent),
-            0 0 56px rgba(255, 0, 73, 0.6),
-            0 0 120px rgba(255, 0, 73, 0.4);
-    }
-    100% {
-        text-shadow:
-            0 0 5px var(--color-accent),
-            0 0 10px var(--color-accent),
-            0 0 20px var(--color-accent),
-            0 0 40px rgba(255, 0, 73, 0.5),
-            0 0 80px rgba(255, 0, 73, 0.3);
-    }
-}
-
         .landing-container h1 {
             margin-bottom: 20px;
         }
@@ -120,7 +76,7 @@
     </nav>
     <div class="center-wrapper">
         <div class="container" style="text-align: center; margin-bottom: 20px;">
-            <h1 class="logo neon-title">Map of Unspoken Things</h1>
+            <h1 class="logo" style="font-size: 3rem;">Map of Unspoken Things</h1>
         </div>
         <div class="landing-container">
             <p>
