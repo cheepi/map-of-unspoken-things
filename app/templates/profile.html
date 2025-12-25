@@ -31,7 +31,7 @@
         <div class="profile-grid">
             <div class="profile-card-left">
                 <div style="display:flex; gap:20px; align-items:center;">
-                    <img src="{{ user.profile_pic or url_for('static', filename='default-user.png') }}" alt="avatar" style="width:100px; height:100px; border-radius:12px; object-fit:cover;">
+                    <img src="{{ user.profile_pic or 'https://static.vecteezy.com/system/resources/previews/026/619/142/original/default-avatar-profile-icon-of-social-media-user-photo-image-vector.jpg' }}" alt="avatar" style="width:100px; height:100px; border-radius:12px; object-fit:cover;">
                     <div>
                         <h3 style="margin-bottom:6px;">{{ user.username }}</h3>
                         <div style="color:#aaa;">Stories: {{ user.entry_count }} • Tags: {{ user.tag_count }}</div>
