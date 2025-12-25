@@ -230,7 +230,7 @@ img { display: block; max-width: 100%; }
 .stats-banner { 
     text-align: center; 
     margin-bottom: 50px; 
-    padding: 60px 20px; 
+    padding: 40px 20px; 
     background: #111; 
     border: 1px solid var(--border); 
     border-radius: 24px; 
@@ -248,6 +248,22 @@ img { display: block; max-width: 100%; }
 .stats-highlight { 
     color: var(--accent); 
     font-weight: bold; 
+}
+
+.update-banner {
+    background: #111; 
+    border: 1px solid var(--border); 
+    border-radius: 24px; 
+    padding: 25px;
+}
+
+.update-banner h3 { 
+    font-size: 0.85rem; 
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: #888; 
+    font-weight: 600;
+    margin: 10px 45px 15px;
 }
 
 /* ================================================== */

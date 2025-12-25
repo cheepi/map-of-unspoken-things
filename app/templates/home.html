@@ -147,7 +147,7 @@
                     {% endif %}
 
                     {% if session.user_id %}
-                        <h4 style="color:#666; margin-bottom:15px; font-size:0.85rem; text-transform:uppercase; letter-spacing:1px;">Jejak Terakhirmu</h4>
+                        <h4 style="color:#666; margin-bottom:15px; font-size:0.85rem; text-transform:uppercase; letter-spacing:1px;">Recent Aktivitas</h4>
                         {% if user_entries %}
                             <div style="max-height:45vh; overflow-y:auto;">
                                 {% for e in user_entries[:5] %}
@@ -170,7 +170,7 @@
                         {% endif %}
                     {% else %}
                         <div style="text-align:center; padding:20px 0;">
-                            <p style="color:#ccc; margin-bottom:15px;">Mau spill juga?</p>
+                            <p style="color:#ccc; margin-bottom:15px; font-size: 0.85rem;">Mau spill juga?</p>
                             <a href="{{ url_for('auth.login') }}" class="btn-primary">Masuk Dulu, Cuz</a>
                         </div>
                     {% endif %}
@@ -183,60 +183,67 @@
         </div>
 
         <div class="explore-section" id="feed-start">
-            <div class="stats-banner" style="margin-top: 30px;">
-                <h2>Map of Unspoken Things</h2>
-                <p>
-                    Udah nampung <span class="stats-highlight">{{ total_stories }} spill-an</span> 
-                    dari <span class="stats-highlight">{{ total_writers }} warga sini</span>.
+            <div class="stats-banner" style="margin-top: 30px; font-size: 0.9rem; text-align: center;">
+                <h3>Map of Unspoken Things</h3>
+                <p style="font-size: 1.5rem; margin-top: 15px; line-height: 1.3rem;">
+                    <strong>
+                        Udah ada <span class="stats-highlight">{{ total_stories }} spill-an</span> 
+                        dari <span class="stats-highlight">{{ total_writers }} warga sini</span>.
+                    </strong>
                 </p>
             </div>
 
-            <div class="stories-gallery">
-                {% if all_entries %}
-                    {% for entry in all_entries[:10] %}
-                    <div class="story-card">
-                        {% if entry.image_url %}
-                            <img class="card-img-top" src="{{ entry.image_url }}" alt="Story">
-                        {% endif %}
-
-                        <div class="story-content"">
-                            <div class="story-user">
-                                <img src="{{ entry.profile_pic or 'https://static.vecteezy.com/system/resources/previews/026/619/142/original/default-avatar-profile-icon-of-social-media-user-photo-image-vector.jpg' }}">
-                                <div>
-                                    <strong style="font-size:0.9rem; color:white; display:block;">{{ entry.username }}</strong>
-                                    <small style="color:#888;">{{ entry.title }}</small>
-                                </div>
-                            </div>
-                            <p style="color:#ccc; font-size:0.85rem; line-height:1.4; margin-bottom:15px; flex:1; overflow:hidden;">
-                                {{ entry.description[:80] }}...
-                            </p>
-                            
-                            {% if entry.spotify_url %}
-                                <iframe
-                                    style="border-radius:12px; width:100%; margin-bottom:25px;"
-                                    src="https://open.spotify.com/embed/track/{{ entry.spotify_url.split('track/')[-1] }}"
-                                    height="80"
-                                    frameborder="0"
-                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                                    loading="lazy">
-                                </iframe>
+            <div class="update-banner">
+                <h3>currently added.</h3>
+                <div class="stories-gallery">
+                    {% if all_entries %}
+                        {% for entry in all_entries[:10] %}
+                        <div class="story-card">
+                            {% if entry.image_url %}
+                                <img class="card-img-top" src="{{ entry.image_url }}" alt="Story">
                             {% endif %}
 
-                            <div class="story-footer">
-                                <button class="btn-map-view" onclick="zoomToEntry('{{ entry.latitude }}', '{{ entry.longitude }}')">Liat di Map</button>
+                            <div class="story-content"">
+                                <div class="story-user">
+                                    <img src="{{ entry.profile_pic or 'https://static.vecteezy.com/system/resources/previews/026/619/142/original/default-avatar-profile-icon-of-social-media-user-photo-image-vector.jpg' }}">
+                                    <div>
+                                        <strong style="font-size:0.9rem; color:white; display:block;">{{ entry.username }}</strong>
+                                        <small style="color:#888;">{{ entry.title }}</small>
+                                    </div>
+                                </div>
+                                <p style="color:#ccc; font-size:0.85rem; line-height:1.4; margin-bottom:15px; flex:1; overflow:hidden;">
+                                    {{ entry.description[:80] }}...
+                                </p>
+                                
+                                {% if entry.spotify_url %}
+                                    <iframe
+                                        style="border-radius:12px; width:100%; margin-bottom:25px;"
+                                        src="https://open.spotify.com/embed/track/{{ entry.spotify_url.split('track/')[-1] }}"
+                                        height="80"
+                                        frameborder="0"
+                                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                        loading="lazy">
+                                    </iframe>
+                                {% endif %}
+
+                                <div class="story-footer">
+                                    <button class="btn-map-view" onclick="zoomToEntry('{{ entry.latitude }}', '{{ entry.longitude }}')">Liat di Map</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div style="text-align:center; padding:80px 20px; width:100%; background:rgba(255,255,255,0.02); border:1px dashed #444; border-radius:20px;">
-                        <i class="fas fa-search" style="font-size:3rem; color:#444; margin-bottom:20px;"></i>
-                        <h3 style="color:#888;">Gak ada yang cocok nih</h3>
-                        <p style="color:#666; margin-bottom:20px;">Coba kata kunci lain</p>
-                        <a href="{{ url_for('main.home') }}" class="btn-primary" style="display:inline-block;">Balik ke Semua Cerita</a>
-                    </div>
-                {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div style="text-align:center; padding:80px 20px; width:100%; background:rgba(255,255,255,0.02); border:1px dashed #444; border-radius:20px;">
+                            <i class="fas fa-search" style="font-size:3rem; color:#444; margin-bottom:20px;"></i>
+                            <h3 style="color:#888;">Gak ada yang cocok nih</h3>
+                            <p style="color:#666; margin-bottom:20px;">Coba kata kunci lain</p>
+                            <a href="{{ url_for('main.home') }}" class="btn-primary" style="display:inline-block;">Balik ke Semua Cerita</a>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
+
+            
         </div>
     </div>
 
