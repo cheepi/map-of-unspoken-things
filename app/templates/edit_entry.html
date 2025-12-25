@@ -42,7 +42,7 @@
                 <div class="music-search-box">
                     <div style="display:flex; gap:10px;">
                         <input type="text" id="musicQuery" placeholder="Cari lagu baru..." style="margin-bottom:0;" autocomplete="off">
-                        <button type="button" onclick="searchMusic()" class="btn-search-icon"><i class="fas fa-search"></i></button>
+                        <!-- <button type="button" onclick="searchMusic()" class="btn-search-icon"><i class="fas fa-search"></i></button> -->
                     </div>
                     <div id="musicResults" class="music-results"></div>
                     
@@ -168,27 +168,34 @@
             
             if (savedUrl && savedUrl !== 'None') {
                 document.getElementById('spotify-preview').style.display = 'flex';
-                document.getElementById('preview-title').innerText = "Memuat Info Lagu...";
-                document.getElementById('preview-artist').innerText = "Tunggu bentar...";
+                document.getElementById('preview-title').innerText = "Lagi nyari info lagu...";
+                document.getElementById('preview-artist').innerText = "Bentar yak...";
                 
-                fetch(`/spotify_search?q=${encodeURIComponent(savedUrl)}`)
+                let searchQuery = savedUrl;
+                const idMatch = savedUrl.match(/track\/([a-zA-Z0-9]+)/);
+                
+                if (idMatch && idMatch[1]) {
+                    searchQuery = `uri:spotify:track:${idMatch[1]}`;
+                }
+
+                fetch(`/spotify_search?q=${encodeURIComponent(searchQuery)}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data && data.length > 0) {
                             const track = data[0]; 
                             document.getElementById('preview-title').innerText = track.name;
                             document.getElementById('preview-artist').innerText = track.artist;
-                            document.getElementById('preview-img').src = track.image; 
+                            document.getElementById('preview-img').src = track.image;
                             document.getElementById('musicQuery').placeholder = `${track.artist} - ${track.name}`;
                         } else {
-                            document.getElementById('preview-title').innerText = "Lagu Tersimpan";
-                            document.getElementById('preview-artist').innerText = "Klik X buat ganti";
+                            document.getElementById('preview-title').innerText = "Info lagu gagal dimuat";
+                            document.getElementById('preview-artist').innerText = "Tapi link masih aman kok.";
                         }
                     })
                     .catch(err => {
                         console.log("Gagal fetch info lagu:", err);
-                        document.getElementById('preview-title').innerText = "Lagu Tersimpan";
-                        document.getElementById('preview-artist').innerText = "Klik X buat ganti";
+                        document.getElementById('preview-title').innerText = "Gagal konek Spotify";
+                        document.getElementById('preview-artist').innerText = "Cek internet lu.";
                     });
             }
         });

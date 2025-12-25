@@ -35,7 +35,6 @@ def login_required(view):
         return view(*args, **kwargs)
     return wrapped_view
 
-
 @entries_bp.route('/spotify_search')
 def spotify_search():
     query = request.args.get('q', '').strip()
@@ -48,35 +47,63 @@ def spotify_search():
         return jsonify([])
     
     try:
-        headers = {'Authorization': f'Bearer {token}'}
-        resp = requests.get(
-            'https://api.spotify.com/v1/search',
-            headers=headers,
-            params={'q': query, 'type': 'track', 'limit': 5},
-            timeout=5
-        )
+        headers = {'Authorization': f'Bearer {token}'}        
+        track_id_match = re.search(r'(?:track/|spotify:track:)([a-zA-Z0-9]+)', query)
         
-        if resp.status_code != 200:
-            return jsonify([])
-        
-        data = resp.json()
-        tracks = []
-        
-        for item in data.get('tracks', {}).get('items', []):
-            img = ''
-            if item['album']['images']:
-                img = item['album']['images'][1]['url'] if len(item['album']['images']) > 1 else item['album']['images'][0]['url']
+        if track_id_match:
+            track_id = track_id_match.group(1)
             
-            tracks.append({
-                'id': item['id'],
-                'name': item['name'],
-                'artist': item['artists'][0]['name'],
-                'image': img,
-                'url': item['external_urls']['spotify'] 
-            })
-        
-        return jsonify(tracks)
-        
+            resp = requests.get(
+                f'https://api.spotify.com/v1/tracks/{track_id}', 
+                headers=headers,
+                timeout=5
+            )
+            
+            if resp.status_code == 200:
+                item = resp.json()
+                img = ''
+                if item['album']['images']:
+                    img = item['album']['images'][0]['url']
+                
+                return jsonify([{
+                    'id': item['id'],
+                    'name': item['name'],
+                    'artist': item['artists'][0]['name'],
+                    'image': img,
+                    'url': item['external_urls']['spotify'] 
+                }])
+            else:
+                return jsonify([])
+                
+        else:
+            resp = requests.get(
+                'https://api.spotify.com/v1/search',
+                headers=headers,
+                params={'q': query, 'type': 'track', 'limit': 5},
+                timeout=5
+            )
+            
+            if resp.status_code != 200:
+                return jsonify([])
+            
+            data = resp.json()
+            tracks = []
+            
+            for item in data.get('tracks', {}).get('items', []):
+                img = ''
+                if item['album']['images']:
+                    img = item['album']['images'][1]['url'] if len(item['album']['images']) > 1 else item['album']['images'][0]['url']
+                
+                tracks.append({
+                    'id': item['id'],
+                    'name': item['name'],
+                    'artist': item['artists'][0]['name'],
+                    'image': img,
+                    'url': item['external_urls']['spotify'] 
+                })
+            
+            return jsonify(tracks)
+            
     except Exception as e:
         print(f"Spotify search error: {e}")
         return jsonify([])
@@ -151,7 +178,11 @@ def edit_entry(id):
 
     if request.method == 'POST':
         new_spot = request.form.get('spotify_link')
-        spot_url = new_spot if new_spot else entry['spotify_url']
+        
+        if new_spot:
+            spot_url = new_spot.split('?')[0]
+        else:
+            spot_url = entry['spotify_url']
 
         cur.execute('''
             UPDATE entries 
@@ -162,13 +193,13 @@ def edit_entry(id):
             request.form.get('description', ''), 
             request.form.get('image_url', ''), 
             request.form.get('gmaps_link', ''), 
-            spot_url, 
+            spot_url,  
             request.form.get('pin_color', '#ff4757'), 
             request.form.get('latitude'), 
             request.form.get('longitude'), 
             id
         ))
-        
+                
         cur.execute('DELETE FROM entry_tags WHERE entry_id = %s', (id,))
         tags = request.form.get('tags', '')
         if tags:
