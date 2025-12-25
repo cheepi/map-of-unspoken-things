@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Register — Map of Unspoken Things</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.svg') }}">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <h2 style="color:white; margin-bottom:10px;">Join the Circle</h2>
+            <p style="color:#888; margin-bottom:30px;">Mulai spill (dan baca spill-an orang)</p>
+
+            {% if error %}
+                <div style="background:rgba(255,71,87,0.1); color:#ff4757; padding:10px; border-radius:8px; margin-bottom:20px; font-size:0.9rem;">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                <input type="text" name="username" class="auth-input" placeholder="Usernamenya, Cuz?" required>
+                <input type="password" name="password" class="auth-input" placeholder="Password" required>
+                <button type="submit" class="btn-auth btn-primary">Join Sekarang</button>
+            </form>
+
+            <div style="margin-top:30px; font-size:0.9rem; color:#888;">
+                Udah punya akun? <a href="{{ url_for('auth.login') }}" style="color:white; font-weight:bold;">Login Aja</a>
+            </div>
+            <div style="margin-top:10px;">
+                <a href="{{ url_for('main.home') }}" style="color:#555; font-size:0.8rem;">&larr; Balik ke Map</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

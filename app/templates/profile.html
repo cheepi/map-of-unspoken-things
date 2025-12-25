@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Profile – Map of Unspoken Things</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.svg') }}">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><a href="{{ url_for('main.home') }}">MOUThings</a></div>
+        <div class="burger" id="burgerBtn"><div></div><div></div><div></div></div>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="{{ url_for('main.home') }}">Map</a></li>
+            <li><a href="{{ url_for('entries.my_entries') }}">My Entries</a></li>
+            <li><a href="{{ url_for('profile.profile') }}" class="active">Profile</a></li>
+            <li><a href="{{ url_for('auth.logout') }}" style="color:#ff4d4d;">Logout</a></li>
+        </ul>
+    </nav>
+
+    <div class="container" style="padding-top:110px;">
+        <div class="page-header">
+            <h2>Profil</h2>
+            <p style="color:#888;">Kelola info akun</p>
+        </div>
+
+        <div class="profile-grid">
+            <div class="profile-card-left">
+                <div style="display:flex; gap:20px; align-items:center;">
+                    <img src="{{ user.profile_pic or url_for('static', filename='default-user.png') }}" alt="avatar" style="width:100px; height:100px; border-radius:12px; object-fit:cover;">
+                    <div>
+                        <h3 style="margin-bottom:6px;">{{ user.username }}</h3>
+                        <div style="color:#aaa;">Stories: {{ user.entry_count }} • Tags: {{ user.tag_count }}</div>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px;">
+                    <form method="POST" action="{{ url_for('profile.profile') }}">
+                        <label>Username</label>
+                        <input type="text" name="username" class="form-control" value="{{ user.username }}">
+
+                        <label style="margin-top:8px;">Profile Pic URL</label>
+                        <input type="text" name="profile_pic" class="form-control" value="{{ user.profile_pic or '' }}">
+
+                        <label style="margin-top:8px;">Password (kosongin kalau gak mau ganti)</label>
+                        <input type="password" name="password" class="form-control">
+
+                        <div style="display:flex; gap:10px; margin-top:12px;">
+                            <button class="btn-primary" type="submit">Update</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div>
+                <!-- danger zone -->
+                <div class="danger-card" id="dangerZone" style="margin-top:30px;">
+                    <div onclick="toggleDanger()" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0;">
+                            <i class="fas fa-exclamation-triangle"></i> Danger Zone
+                        </h3>
+                        <i class="fas fa-chevron-down" id="dangerIcon" style="transition:0.3s;"></i>
+                    </div>
+                    
+                    <div id="dangerContent" style="max-height:0; overflow:hidden; transition:max-height 0.4s ease;">
+                        <p style="color:#aaa; font-size:0.9rem; margin:20px 0;"></p>
+                        
+                        <!-- archive all -->
+                        <form method="POST" action="{{ url_for('profile.archive_all_entries') }}" onsubmit="return confirm('Arsip semua cerita? Kamu bisa restore nanti.')" style="margin-bottom:15px;">
+                            <button type="submit" style="width:100%; padding:12px; background:transparent; border:1px solid #FFC107; color:#FFC107; border-radius:8px; cursor:pointer; font-weight:bold;">
+                                <i class="fas fa-archive"></i> Mode Hantu
+                            </button>
+                        </form>
+
+                        <!-- permanent acc delete -->
+                        <button onclick="openModal()" style="width:100%; padding:12px; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; border-radius:8px; cursor:pointer; font-weight:bold;">
+                            <i class="fas fa-user-slash"></i> Cabut Selamanya
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- info -->
+    <button class="fab-info" onclick="toggleInfo()">
+        <i class="fas fa-question"></i>
+    </button>
+
+    <!-- info modal -->
+    <div class="info-modal" id="infoModal" onclick="if(event.target === this) toggleInfo()">
+        <div class="info-content" style="max-width:500px;">
+            <h3 style="color:white; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-info-circle" style="color:var(--accent);"></i> Bisa ngapain di page ini?
+            </h3>
+            
+            <div style="text-align:left; color:#ccc; line-height:1.4;">
+                <div style="margin-bottom:15px; padding:15px; background:#111; border-radius:12px; border-left:3px solid #FFC107;">
+                    <strong style="color:#FFC107; display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <i class="fas fa-archive"></i> Mode Hantu (Arsip Semua)
+                    </strong>
+                    <small>Persis fitur 'Archive' IG. Ilang dari map, tapi datanya aman kok.</small>
+                </div>
+
+                <div style="margin-bottom:15px; padding:15px; background:#111; border-radius:12px; border-left:3px solid #ff4757;">
+                    <strong style="color:#ff4757; display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <i class="fas fa-trash"></i> Cabut Selamanya (Hapus Akun)
+                    </strong>
+                    <small>Semua jejak kamu bakal angus total. 
+                        <span style="color:#ff4757; font-weight:bold;">Gabisa di-undo, serius.</span>   
+                    </small>
+                </div>
+            </div>
+
+            <button onclick="toggleInfo()" style="margin-top:20px; width:100%; padding:12px; background:var(--accent); color:white; border:none; border-radius:12px; cursor:pointer; font-weight:bold;">
+                Oke!
+            </button>
+        </div>
+    </div>
+
+    <!-- fab add entry -->
+    <a href="{{ url_for('entries.add_entry') }}" class="fab-add">
+        <i class="fas fa-plus"> </i>
+    </a>
+
+    <!-- delete confirmation modal -->
+    <div class="info-modal" id="deleteModal" onclick="if(event.target === this) closeModal()">
+        <div class="info-content" style="text-align:center;">
+            <h3 style="color:#ff4d4d; margin-bottom:15px;">
+                <i class="fas fa-skull-crossbones"></i> Serius mau hapus akun?
+            </h3>
+            <p style="color:#ccc; font-size:0.9rem; margin-bottom:20px;">
+                Ketik <strong style="color:var(--accent);">"{{ user.username }} hapus"</strong> buat konfirmasi kalo kamu beneran mau pergi.
+            </p>
+            
+            <input type="text" id="confirmInput" class="auth-input" style="border-color:#ff4d4d; background:#1a0505; text-align:center;" placeholder="Ketik persis teks di atas...">
+            
+            <form method="POST" action="{{ url_for('auth.delete_profile') }}">
+                <button type="submit" id="confirmBtn" disabled 
+                    style="width:100%; padding:12px; background:transparent; border:1px solid #555; color:#555; border-radius:8px; cursor:not-allowed; transition:0.3s;">
+                    <i class="fas fa-trash"></i> Lenyapkan Akun
+                </button>
+            </form>
+            
+            <button onclick="closeModal()" style="margin-top:10px; background:none; border:none; color:#888; cursor:pointer;">Gajadi deh, kepencet.</button>
+        </div>
+    </div>
+
+    <script>
+        const burger = document.getElementById('burgerBtn');
+        const navLinks = document.getElementById('navLinks');
+        burger && burger.addEventListener('click', () => {
+            navLinks.classList.toggle('nav-active');
+            burger.classList.toggle('toggle');
+        });
+
+        // danger zone toggle
+        function toggleDanger() {
+            const content = document.getElementById('dangerContent');
+            const icon = document.getElementById('dangerIcon');
+            
+            if (content.style.maxHeight === '0px' || !content.style.maxHeight) {
+                content.style.maxHeight = '300px';
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                content.style.maxHeight = '0px';
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // delete modal
+        const modal = document.getElementById('deleteModal');
+        const input = document.getElementById('confirmInput');
+        const btn = document.getElementById('confirmBtn');
+
+        function openModal() {
+            modal.classList.add('active');
+            input.focus();
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            input.value = '';
+            btn.disabled = true;
+            btn.style.background = 'transparent';
+            btn.style.color = '#555';
+            btn.style.cursor = 'not-allowed';
+            btn.style.border = '1px solid #555';
+        }
+
+        input.addEventListener('input', function() {
+            if(this.value === "{{ user.username }} hapus") {
+                btn.disabled = false;
+                btn.style.background = '#ff4d4d';
+                btn.style.color = 'white';
+                btn.style.cursor = 'pointer';
+                btn.style.border = 'none';
+                btn.style.fontWeight = 'bold';
+                btn.innerHTML = '<i class="fas fa-bomb"></i> LENYAPKAN SEKARANG';
+            } else {
+                btn.disabled = true;
+                btn.style.background = 'transparent';
+                btn.style.color = '#555';
+                btn.style.cursor = 'not-allowed';
+                btn.style.border = '1px solid #555';
+                btn.innerHTML = '<i class="fas fa-bomb"></i> Lenyapkan Akun';
+            }
+        });
+
+        function toggleInfo() {
+            document.getElementById('infoModal').classList.toggle('active');
+        }
+    </script>
+</body>
+</html>

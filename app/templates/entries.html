@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semua Spill – Map of Unspoken Things</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.svg') }}">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><a href="{{ url_for('main.home') }}">MOU<span>Things</span></a></div>
+        <div class="burger" id="burgerBtn"><div></div><div></div><div></div></div>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="{{ url_for('main.home') }}">Map</a></li>
+            <li><a href="{{ url_for('entries.my_entries') }}" class="active">My Entries</a></li>
+            <li><a href="{{ url_for('profile.profile') }}">Profile</a></li>
+            <li><a href="{{ url_for('auth.logout') }}" style="color:#ff4d4d;">Logout</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>My Entries</h2>
+            <p style="color:#888;">Semua hal yang udah kamu spill</p>
+        </div>
+
+        {% if entries %}
+        <div class="entries-grid">
+            <div class="grid-sizer"></div>
+
+            {% for entry in entries %}
+            <div class="entry-card {% if not entry.active %}archived{% endif %}">
+                {% if entry.image_url %}
+                    <img src="{{ entry.image_url }}" alt="{{ entry.title }}" class="entry-img">
+                {% endif %}
+                
+                <div class="entry-body">
+                    <div class="entry-title">
+                        {{ entry.title }}
+                        {% if not entry.active %}
+                            <span class="badge-archived">ARCHIVED</span>
+                        {% endif %}
+                    </div>
+                    
+                    <p class="entry-desc">{{ entry.description or '<em>No further info</em>' | safe }}</p>
+                    
+                    {% if entry.spotify_url %}
+                        {% set spotify_url = entry.spotify_url %}
+                        <iframe style="border-radius:12px; width:100%; margin:15px 0;"
+                                src="https://open.spotify.com/embed/track/{{ spotify_url.split('track/')[-1] }}"
+                                frameborder="0"
+                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                loading="lazy"> 
+                        </iframe>
+                    {% endif %}
+
+                    <div class="entry-actions">
+                        <div style="display:flex; gap:10px;">
+                            <a href="{{ url_for('entries.edit_entry', id=entry.id) }}" class="btn-action btn-edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            
+                            <form method="POST" action="{{ url_for('entries.archive_entry', id=entry.id) }}" style="margin:0;">
+                                <button type="submit" class="btn-action btn-archive">
+                                    {% if entry.active %}
+                                        <i class="fas fa-archive"></i> Arsip
+                                    {% else %}
+                                        <i class="fas fa-undo"></i> Restore
+                                    {% endif %}
+                                </button>
+                            </form>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('entries.delete_entry_permanent', id=entry.id) }}" 
+                              onsubmit="return confirm('Beneran mau dibuang? Gabisa balik loh!')" 
+                              style="margin:0; margin-left:auto;">
+                            <button type="submit" class="btn-action btn-delete">
+                                <i class="fas fa-trash"></i> Buang
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox" style="font-size:3rem; color:#444; margin-bottom:20px;"></i>
+            <h3 style="color:#888;">Sepi amat...</h3>
+            <p style="color:#666; margin-bottom:20px;">Kamu belom pernah nge-spill apa-apa</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- fab -->
+    <a href="{{ url_for('entries.add_entry') }}" class="fab-add">
+        <i class="fas fa-plus"></i>
+    </a>
+
+    <!-- info -->
+    <button class="fab-info" onclick="toggleInfo()">
+        <i class="fas fa-question"></i>
+    </button>
+
+    <div class="info-modal" id="infoModal" onclick="if(event.target === this) toggleInfo()">
+        <div class="info-content" style="max-width:500px;">
+            <h3 style="color:white; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-info-circle" style="color:var(--accent);"></i> Bisa ngapain aja di page ini?
+            </h3>
+            
+            <div style="text-align:left; color:#ccc; line-height:1;">
+                <div style="margin-bottom:15px; padding:15px; background:#111; border-radius:12px; border-left:3px solid #4CAF50;">
+                    <strong style="color:#4CAF50; display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <i class="fas fa-edit"></i> Edit
+                    </strong>
+                    <small>Typo? Salah lagu? Santuy, edit aja sesuka hati.</small>
+                </div>
+
+                <div style="margin-bottom:15px; padding:15px; background:#111; border-radius:12px; border-left:3px solid #FFC107;">
+                    <strong style="color:#FFC107; display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <i class="fas fa-archive"></i> Arsip / Restore
+                    </strong>
+                    <small>Ilangin dari map biar lu doang yang tau (Arsip). Bisa dibalikin lagi kapan aja.</small>
+                </div>
+
+                <div style="margin-bottom:15px; padding:15px; background:#111; border-radius:12px; border-left:3px solid #ff4757;">
+                    <strong style="color:#ff4757; display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <i class="fas fa-trash"></i> Buang Permanen
+                    </strong>
+                    <small>Hapus selamanya. <strong>GABISA DI-UNDO</strong> (Kek dia).</small>
+                </div>
+
+                <div style="padding:15px; background:rgba(255,71,87,0.1); border-radius:12px; border:1px solid rgba(255,71,87,0.3);">
+                    <strong style="color:#ff4757; display:block; margin-bottom:8px;">⚠️ Tips:</strong>
+                    <small>Mending <strong>Arsip</strong> dulu daripada nyesel belakangan!</small>
+                </div>
+            </div>
+
+            <button onclick="toggleInfo()" style="margin-top:20px; width:100%; padding:12px; background:var(--accent); color:white; border:none; border-radius:12px; cursor:pointer; font-weight:bold;">
+                Okesip!
+            </button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+    <script src="https://unpkg.com/imagesloaded@5/imagesloaded.pkgd.min.js"></script>
+    <script>
+        var grid = document.querySelector('.entries-grid');
+        var msnry;
+
+        imagesLoaded( grid, function() {
+            msnry = new Masonry( grid, {
+                itemSelector: '.entry-card',
+                columnWidth: '.grid-sizer',
+                percentPosition: true,
+                gutter: 25 
+            });
+        });
+        
+        const burger = document.getElementById('burgerBtn');
+        const navLinks = document.getElementById('navLinks');
+        burger.addEventListener('click', () => {
+            navLinks.classList.toggle('nav-active');
+            burger.classList.toggle('toggle');
+        });
+
+        function toggleInfo() {
+            document.getElementById('infoModal').classList.toggle('active');
+        }
+    </script>
+</body>
+</html>

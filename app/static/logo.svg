@@ -1,0 +1,43 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="hyperGlow" x="-40%" y="-40%" width="180%" height="180%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feFlood flood-color="#ff0033" flood-opacity="1" result="flood" />
+      <feComposite in="flood" in2="blur" operator="in" result="glow" />
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="glow" /> <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <linearGradient id="aresMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff0033" />
+      <stop offset="100%" style="stop-color:#440005" />
+    </linearGradient>
+  </defs>
+
+  <g opacity="0.15" stroke="#ff0033" stroke-width="1">
+    <path d="M0 256H512M256 0V512" />
+    <circle cx="256" cy="256" r="250" stroke-dasharray="1 10" />
+    <circle cx="256" cy="256" r="180" stroke-dasharray="5 15" />
+  </g>
+
+  <circle cx="256" cy="256" r="225" stroke="#ff0033" stroke-width="2" opacity="0.3" />
+  <circle cx="256" cy="256" r="210" stroke="#ff0033" stroke-width="10" stroke-dasharray="100 60" filter="url(#hyperGlow)" />
+  <circle cx="256" cy="256" r="195" stroke="#ff0033" stroke-width="3" stroke-dasharray="10 20" opacity="0.6" />
+
+  <g filter="url(#hyperGlow)">
+    <path d="M256 460L140 300L140 140L256 80L372 140L372 300L256 460Z" 
+          stroke="#ff0033" stroke-width="12" stroke-linejoin="miter" fill="none" />
+    
+    <path d="M170 200H342M140 250H372M180 320H332" stroke="#ff0033" stroke-width="4" opacity="0.7" />
+    
+    <rect x="236" y="236" width="40" height="40" transform="rotate(45 256 256)" fill="#ff0033" />
+    
+    <path d="M256 80V30M140 140L100 100M372 140L412 100" stroke="#ff0033" stroke-width="8" stroke-linecap="square" />
+  </g>
+
+  <circle cx="256" cy="30" r="8" fill="#ff0033" filter="url(#hyperGlow)" />
+  <circle cx="100" cy="100" r="6" fill="#ff0033" filter="url(#hyperGlow)" />
+  <circle cx="412" cy="100" r="6" fill="#ff0033" filter="url(#hyperGlow)" />
+  <circle cx="256" cy="256" r="12" fill="black" /> </svg>

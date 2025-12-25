@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spill Cerita – Map of Unspoken Things</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.svg') }}">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><a href="{{ url_for('main.home') }}">MOU<span>Things</span></a></div>
+        <div class="burger" id="burgerBtn"><div></div><div></div><div></div></div>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="{{ url_for('main.home') }}">Map</a></li>
+            <li><a href="{{ url_for('entries.my_entries') }}">My Entries</a></li>
+            <li><a href="{{ url_for('profile.profile') }}">Profile</a></li>
+            <li><a href="{{ url_for('auth.logout') }}" style="color: #ff4d4d;">Logout</a></li>
+        </ul>
+    </nav>
+
+    <div class="container" style="padding-top: 110px;">
+        <h2 style="margin-bottom: 30px; color:white;">Spill Something</h2>
+        
+        <form method="POST" class="form-grid">
+            <div class="form-left">
+                <label>Garis besar kejadiannya? (or whatever)*</label>
+                <input type="text" name="title" required placeholder="udah siap, udah di lokasi, baru dikabarin ga jadi....">
+                
+                <label>What's that one thing you wish you'd said in that moment?</label>
+                <textarea name="description" rows="6" placeholder="yaudah, ga usah ngajak lagi..."></textarea>
+                
+                <label style="margin-top:20px; border-top:1px solid #333; padding-top:20px; color:var(--accent);">
+                    <i class="fab fa-spotify"></i> Lagu yang nge-boost suasana ceritamu
+                </label>
+                <div class="music-search-box">
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="musicQuery" placeholder="judul (+ artis kalau perlu)..." style="margin-bottom:0;" autocomplete="off">
+                        <button type="button" onclick="searchMusic()" class="btn-search-icon"><i class="fas fa-search"></i></button>
+                    </div>
+                    
+                    <div id="musicResults" class="music-results"></div>
+
+                    <div id="spotify-preview" style="display: none; margin-top: 10px; background: #222; padding: 10px; border-radius: 10px; border: 1px solid var(--accent); align-items: center; gap: 10px;">
+                        <img id="preview-img" src="" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;">
+                        <div style="flex: 1; overflow: hidden;">
+                            <strong id="preview-title" style="display: block; font-size: 0.9rem; color: white;">Judul</strong>
+                            <small id="preview-artist" style="color: #aaa; font-size: 0.8rem;">Artis</small>
+                        </div>
+                        <button type="button" onclick="clearSpotify()" style="background: none; border: none; color: #ff4d4d; cursor: pointer;"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+
+                <input type="hidden" name="spotify_link" id="spotify_link">
+                
+                <label style="margin-top:15px;">Drop foto pendukung di sini</label>
+                <input type="text" name="image_url" placeholder="https://...">
+                
+                <label>Warna Pin</label>
+                <input type="color" name="pin_color" value="#ff4757" style="height: 50px; padding: 5px; cursor: pointer;">
+                
+                <label>Tags (literally anything, pisahin pakai koma)</label>
+                <input type="text" name="tags" placeholder="kecewa, dibatalin, unrequited friendship...">
+            </div>
+
+            <div class="form-right">
+                <label>Google Maps Link (kalo males cari titiknya)</label>
+                <input type="text" name="gmaps_link" placeholder="Paste link Gmaps...">
+
+                <label>Tempat Kejadian Perkara (defaultnya Jakarta)</label>
+                <div id="map-picker" style="height: 350px; width: 100%; border-radius: 12px; margin-bottom: 15px; border: 1px solid #444;"></div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" name="latitude" id="lat" placeholder="Latitude" readonly required style="background:#222; color:#777;">
+                    <input type="text" name="longitude" id="lng" placeholder="Longitude" readonly required style="background:#222; color:#777;">
+                </div>
+
+                <button type="submit" class="btn-save" style="margin-top: 20px;">Post</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map-picker').setView([-6.2, 106.8], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let marker;
+
+        map.on('click', function(e) {
+            document.getElementById('lat').value = e.latlng.lat;
+            document.getElementById('lng').value = e.latlng.lng;
+            if (marker) marker.setLatLng(e.latlng); 
+            else marker = L.marker(e.latlng).addTo(map);
+        });
+
+        const linkInput = document.querySelector('input[name="gmaps_link"]');
+        const latInput = document.querySelector('input[name="latitude"]');
+        const lonInput = document.querySelector('input[name="longitude"]');
+
+        function extractCoordinates(url) {
+            let lat = null, lon = null;
+
+            //coba format url panjang (browser pc)
+            //ex .../place/Name/@-6.175,106.825,15z...
+            const matchAt = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+            
+            //coba format data param
+            //ex ...!3d-6.175!4d106.825...
+            const matchData = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+
+            //coba format search query
+            //ex ...?q=-6.175,106.825
+            const matchQuery = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+
+            if (matchAt) {
+                lat = matchAt[1];
+                lon = matchAt[2];
+            } else if (matchData) {
+                lat = matchData[1];
+                lon = matchData[2];
+            } else if (matchQuery) {
+                lat = matchQuery[1];
+                lon = matchQuery[2];
+            }
+
+            return { lat, lon };
+        }
+
+        if (linkInput) {
+            linkInput.addEventListener('input', function(e) {
+                const url = e.target.value;
+                const coords = extractCoordinates(url);
+
+                if (coords.lat && coords.lon) {
+                    latInput.value = coords.lat;
+                    lonInput.value = coords.lon;
+                    const newLatLng = new L.LatLng(coords.lat, coords.lon);
+                    
+                    if (marker) {
+                        marker.setLatLng(newLatLng);
+                    } else {
+                        marker = L.marker(newLatLng).addTo(map);
+                    }
+                    
+                    map.setView(newLatLng, 15);
+                    
+                    console.log("Koordinat dapet & Map geser bos:", coords);
+                } else {
+                    console.log("Link gmaps valid, tapi format koordinatnya aneh/pendek.");
+                }
+            });
+            
+            if (linkInput.value) {
+                linkInput.dispatchEvent(new Event('input'));
+            }
+        }
+
+        let searchTimeout;
+        let abortController;
+
+        function searchMusic() {
+            if (abortController) abortController.abort();
+            clearTimeout(searchTimeout);
+            
+            const query = document.getElementById('musicQuery').value.trim();
+            const resultsDiv = document.getElementById('musicResults');
+            
+            if (!query || query.length < 2) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                resultsDiv.style.display = 'block';
+                resultsDiv.innerHTML = '<div style="padding:10px; color:#888;">Mencari di Spotify...</div>';
+                
+                abortController = new AbortController();
+                
+                fetch(`/spotify_search?q=${encodeURIComponent(query)}`, {
+                    signal: abortController.signal
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error('Network error');
+                    return res.json();
+                })
+                .then(data => {
+                    resultsDiv.innerHTML = '';
+                    
+                    if (!data || data.length === 0) {
+                        resultsDiv.innerHTML = '<div style="padding:10px; color:#888;">Lagu tidak ditemukan.</div>';
+                        return;
+                    }
+                    
+                    data.forEach(track => {
+                        const item = document.createElement('div');
+                        item.className = 'music-item';
+                        
+                        item.innerHTML = `
+                            <img src="${track.image}" class="music-thumb">
+                            <div style="flex:1; min-width:0;">
+                                <strong style="color:white; font-size:0.9rem; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    ${track.name}
+                                </strong>
+                                <small style="color:#888; font-size:0.75rem;">${track.artist}</small>
+                            </div>
+                        `;
+                        
+                        item.onclick = () => {
+                            document.getElementById('spotify_link').value = track.url;
+                            document.getElementById('preview-img').src = track.image;
+                            document.getElementById('preview-title').innerText = track.name;
+                            document.getElementById('preview-artist').innerText = track.artist;
+                            document.getElementById('spotify-preview').style.display = 'flex';
+                            document.getElementById('musicQuery').value = '';
+                            resultsDiv.style.display = 'none';
+                        };
+                        
+                        resultsDiv.appendChild(item);
+                    });
+                })
+                .catch(err => {
+                    if (err.name !== 'AbortError') {
+                        console.error('Search error:', err);
+                        resultsDiv.innerHTML = '<div style="padding:10px; color:#ff4d4d;">Gak ada nih lagunya. Coba lagi.</div>';
+                    }
+                });
+            }, 600);
+        }
+
+        function clearSpotify() {
+            document.getElementById('spotify_link').value = '';
+            document.getElementById('spotify-preview').style.display = 'none';
+        }
+
+        document.getElementById('musicQuery').addEventListener('input', searchMusic);
+        
+        document.getElementById('musicQuery').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchMusic();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            const searchBox = document.querySelector('.music-search-box');
+            if (searchBox && !searchBox.contains(e.target)) {
+                document.getElementById('musicResults').style.display = 'none';
+            }
+        });
+
+        const burger = document.getElementById('burgerBtn');
+        const navLinks = document.getElementById('navLinks');
+        burger.addEventListener('click', () => {
+            navLinks.classList.toggle('nav-active');
+            burger.classList.toggle('toggle');
+        });
+    </script>
+</body>
+</html>

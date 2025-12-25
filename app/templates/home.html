@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Home – Map of Unspoken Things</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.svg') }}">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        iframe {
+            display: block !important;
+            border: none !important; 
+        }
+    </style>
+</head>
+<body>
+    
+    <nav class="navbar">
+        <div class="logo"><a href="{{ url_for('main.home') }}">MOUThings</a></div>
+        <div class="burger" onclick="toggleNav()"><div></div><div></div><div></div></div>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('main.home') }}" class="active">Map</a></li>
+            {% if session.user_id %}
+                <li><a href="{{ url_for('entries.my_entries') }}">My Entries</a></li>
+                <li><a href="{{ url_for('profile.profile') }}">Profile</a></li>
+                <li><a href="{{ url_for('auth.logout') }}" style="color:#ff4d4d;" onclick="return confirm('Cabut?')">Logout</a></li>
+            {% else %}
+                <li><a href="{{ url_for('auth.login') }}" class="guest-cta">Login</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+
+    <div class="main-wrapper">
+        <div class="map-section">
+            <div id="map"></div>
+
+            <!-- info -->
+            <button class="fab-info"
+                style="position: fixed; left: 30px; top: 90px; z-index: 3;"
+                onclick="toggleInfo()">
+                <i class="fas fa-question"></i>
+            </button>
+
+            <!-- info modal -->
+            <div class="info-modal" id="infoModal" onclick="if(event.target === this) toggleInfo()">
+                <div class="info-content">
+                    
+                    <div style="text-align:center; margin-bottom:25px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 25px;">
+                        <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                            <img src="{{ url_for('static', filename='logo.svg') }}" alt="MOUThings Logo" style="width: 100%; height: 100%; filter: drop-shadow(0 0 10px #ff0033);">
+                        </div>
+                        <p style="color:#ccc; font-size:0.9rem; line-height:1.6;">
+                            <strong>MOUThings (Map of Unspoken Things)</strong> adalah peta kenangan kolektif. <br>
+                            Tempat di mana setiap sudut jalan punya cerita dan setiap cerita punya lagu pengiringnya.
+                        </p>
+                    </div>
+
+                    <hr style="border:0; border-top:1px solid #333; margin:25px 0;">
+
+                    <h4 style="color:#888; margin-bottom:15px; text-transform:uppercase; font-size:0.8rem; letter-spacing:1px; text-align: left;">
+                        Kontrol Penuh:
+                    </h4>
+
+                    <div class="pro-tips">
+                        <div class="tip-row">
+                            <div class="tip-header">
+                                <i class="fas fa-edit" style="color:#4CAF50;"></i>
+                                <strong>Revisi Sesuka Hati</strong>
+                            </div>
+                            <div class="tip-description">
+                                Typo? Salah lagu? Santuy, edit lagi aja ntar.
+                            </div>
+                        </div>
+
+                        <div class="tip-row">
+                            <div class="tip-header">
+                                <i class="fas fa-eye-slash" style="color:#FFC107;"></i>
+                                <strong>Umpetin Dulu (Arsip)</strong>
+                            </div>
+                            <div class="tip-description">
+                                Ilangin dari map biar kamu doang yang tau (privat), Cuz.
+                            </div>
+                        </div>
+
+                        <div class="tip-row">
+                            <div class="tip-header">
+                                <i class="fas fa-trash" style="color:#ff4757;"></i>
+                                <strong>ILANGIN AJA (hapus)</strong>
+                            </div>
+                            <div class="tip-description">
+                                Ati-ati, kalo dihapus gabisa balik lagi (kek dia).
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="toggleInfo()" class="btn-primary" style="width:100%; margin-top:25px; font-weight:bold;">
+                        Oke, Paham. Gas! 🛸
+                    </button>
+                </div>
+            </div>
+
+            <div id="sidebar" {% if query %}class="expanded"{% endif %}>
+                <div class="mobile-handle" onclick="toggleSidebar()">
+                    <div>
+                        <span style="font-size:0.7rem; color:#888; text-transform:uppercase;">{{ greeting }}</span>
+                        <strong style="color:white; display:block;">{% if session.user_id %}{{ session.username }}{% else %}Stranger{% endif %}</strong>
+                    </div>
+                    <i class="fas {% if query %}fa-chevron-down{% else %}fa-chevron-up{% endif %}" id="chevron" style="color:white;"></i>
+                </div>
+
+                <div id="sidebar-content">
+
+                    <!-- search -->
+                    <form method="GET" action="{{ url_for('main.home') }}" style="margin-bottom:20px;">
+                        <div style="position:relative;">
+                            <input 
+                                type="text" 
+                                name="q" 
+                                value="{{ query }}" 
+                                placeholder="Cari apaan? ketik sini..." 
+                                style="width:100%; padding:12px 45px 12px 15px; background:#111; border:1px solid #444; border-radius:12px; color:white; font-size:0.85rem;"
+                            >
+                            <button 
+                                type="submit" 
+                                style="position:absolute; right:8px; top:35%; transform:translateY(-50%); width:32px; height:32px; background:var(--accent); border:none; border-radius:8px; color:white; cursor:pointer; display:flex; align-items:center; justify-content:center;"
+                            >
+                                <i class="fas fa-search" style="font-size:0.85rem;"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if query %}
+                    <div style="padding:12px; background:rgba(255,71,87,0.1); border:1px solid rgba(255,71,87,0.3); border-radius:12px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <small style="color:#888; display:block; font-size:0.7rem;">Hasil pencarian:</small>
+                            <strong style="color:white; font-size:0.9rem;">"{{ query }}"</strong>
+                        </div>
+                        <a href="{{ url_for('main.home') }}" style="color:var(--accent); font-size:0.85rem; display:flex; align-items:center; gap:5px; text-decoration:none;">
+                            <i class="fas fa-times"></i>
+                            <span style="font-size:0.75rem;">Clear</span>
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    {% if session.user_id %}
+                        <h4 style="color:#666; margin-bottom:15px; font-size:0.85rem; text-transform:uppercase; letter-spacing:1px;">Jejak Terakhirmu</h4>
+                        {% if user_entries %}
+                            <div style="max-height:45vh; overflow-y:auto;">
+                                {% for e in user_entries[:5] %}
+                                <div class="sidebar-box">
+                                    {% if e.image_url %}
+                                        <img src="{{ e.image_url }}" class="sidebar-img">
+                                    {% endif %}
+                                    <div class="sidebar-box-content">
+                                        <strong style="color:white; font-size:0.95rem; display:block; margin-bottom:5px;">{{ e.title }}</strong>
+                                        <small style="color:#888;">{{ e.description[:30] }}...</small>
+                                        <div style="margin-top:8px;">
+                                            <a href="{{ url_for('entries.edit_entry', id=e.id) }}" style="font-size:0.75rem; color:var(--accent);">Edit</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p style="color:#666; font-style:italic;">Kamu belum spill apa-apa, Cuz</p>
+                        {% endif %}
+                    {% else %}
+                        <div style="text-align:center; padding:20px 0;">
+                            <p style="color:#ccc; margin-bottom:15px;">Mau spill juga?</p>
+                            <a href="{{ url_for('auth.login') }}" class="btn-primary">Masuk Dulu, Cuz</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="scroll-indicator" onclick="scrollToFeed()">
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+
+        <div class="explore-section" id="feed-start">
+            <div class="stats-banner" style="margin-top: 30px;">
+                <h2>Map of Unspoken Things</h2>
+                <p>
+                    Udah nampung <span class="stats-highlight">{{ total_stories }} spill-an</span> 
+                    dari <span class="stats-highlight">{{ total_writers }} warga sini</span>.
+                </p>
+            </div>
+
+            <div class="stories-gallery">
+                {% if all_entries %}
+                    {% for entry in all_entries[:10] %}
+                    <div class="story-card">
+                        {% if entry.image_url %}
+                            <img class="card-img-top" src="{{ entry.image_url }}" alt="Story">
+                        {% endif %}
+
+                        <div class="story-content"">
+                            <div class="story-user">
+                                <img src="{{ entry.profile_pic or 'https://static.vecteezy.com/system/resources/previews/026/619/142/original/default-avatar-profile-icon-of-social-media-user-photo-image-vector.jpg' }}">
+                                <div>
+                                    <strong style="font-size:0.9rem; color:white; display:block;">{{ entry.username }}</strong>
+                                    <small style="color:#888;">{{ entry.title }}</small>
+                                </div>
+                            </div>
+                            <p style="color:#ccc; font-size:0.85rem; line-height:1.4; margin-bottom:15px; flex:1; overflow:hidden;">
+                                {{ entry.description[:80] }}...
+                            </p>
+                            
+                            {% if entry.spotify_url %}
+                                <iframe
+                                    style="border-radius:12px; width:100%; margin-bottom:25px;"
+                                    src="https://open.spotify.com/embed/track/{{ entry.spotify_url.split('track/')[-1] }}"
+                                    height="80"
+                                    frameborder="0"
+                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                    loading="lazy">
+                                </iframe>
+                            {% endif %}
+
+                            <div class="story-footer">
+                                <button class="btn-map-view" onclick="zoomToEntry('{{ entry.latitude }}', '{{ entry.longitude }}')">Liat di Map</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="text-align:center; padding:80px 20px; width:100%; background:rgba(255,255,255,0.02); border:1px dashed #444; border-radius:20px;">
+                        <i class="fas fa-search" style="font-size:3rem; color:#444; margin-bottom:20px;"></i>
+                        <h3 style="color:#888;">Gak ada yang cocok nih</h3>
+                        <p style="color:#666; margin-bottom:20px;">Coba kata kunci lain</p>
+                        <a href="{{ url_for('main.home') }}" class="btn-primary" style="display:inline-block;">Balik ke Semua Cerita</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script id="entries-data" type="application/json">{{ json_all_entries | tojson }}</script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        const entries = JSON.parse(document.getElementById('entries-data').textContent);
+        const map = L.map('map', {zoomControl: false}).setView([0, 0], 1.5);
+        map.options.minZoom = 1; 
+        map.options.maxZoom = 18;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        entries.forEach(item => {
+            if(item.latitude && item.longitude){
+                const bgColor = item.pin_color || '#ff4757';
+                const imgUrl = item.profile_pic || 'https://static.vecteezy.com/system/resources/previews/026/619/142/original/default-avatar-profile-icon-of-social-media-user-photo-image-vector.jpg';
+                
+                const markerHtml = `
+                    <div class="marker-wrapper">
+                        <div class="marker-box" style="background: ${bgColor};"><img src="${imgUrl}"></div>
+                        <div class="marker-tail" style="border-top-color: ${bgColor};"></div>
+                    </div>`;
+                
+                const description = item.description || '<em>Cuma nitip jejak.</em>';                
+                let tagsHtml = '';
+                if (item.tags_list) {
+                    tagsHtml = item.tags_list.split(',').map(tag => 
+                        `<span style="color:#3498db; font-weight:bold; margin-right:4px;">#${tag}</span>`
+                    ).join(' '); 
+                }
+
+                let spotifyEmbed = '';
+                if (item.spotify_url) {
+                    let embedUrl = item.spotify_url;
+                    const match = item.spotify_url.match(/track\/([a-zA-Z0-9]+)/);
+                    if (match) {
+                        embedUrl = `https://open.spotify.com/embed/track/${match[1]}?utm_source=generator`;
+                    }
+                    
+                    spotifyEmbed = `
+                        <div style="width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                            <iframe style="width:100%; display:block;" 
+                                    src="${embedUrl}" 
+                                    height="80" 
+                                    frameBorder="0" 
+                                    allowfullscreen="" 
+                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                                    loading="lazy">
+                            </iframe>
+                        </div>
+                    `;
+                }
+                
+                const popupContent = `
+                    <div class="custom-popup-layout">
+                        <div class="popup-fixed-header">
+                            <div style="font-size:1rem; font-weight:bold; color:white; margin-bottom:5px;">${item.title}</div>
+                            <div style="font-size:0.75rem; color:#888;">
+                                <i class="fas fa-user"></i> @${item.username}
+                            </div>
+                        </div>
+
+                        <div class="popup-scrollable-content">
+                            ${spotifyEmbed}
+
+                            <p class="popup-text">
+                                ${description}
+                            </p>
+
+                            <div style="font-size: 0.85rem; margin-top: 8px;">
+                                ${tagsHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const icon = L.divIcon({ 
+                    className: '', 
+                    html: markerHtml, 
+                    iconSize: [50, 62], 
+                    iconAnchor: [25, 62], 
+                    popupAnchor: [0, -60] 
+                });
+                
+                L.marker([item.latitude, item.longitude], {icon:icon})
+                    .addTo(map)
+                    .bindPopup(popupContent, {
+                        maxWidth: 350, 
+                        minWidth: 320,
+                        closeButton: false
+                    });
+            }
+        });
+
+        function zoomToEntry(lat, lng) { 
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            map.flyTo([lat, lng], 15, { duration: 1.5 });
+        }
+
+        function scrollToFeed() { 
+            document.getElementById('feed-start').scrollIntoView({ behavior: 'smooth' }); 
+        }
+
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            const icon = document.getElementById('chevron');
+            sb.classList.toggle('expanded');
+            icon.className = sb.classList.contains('expanded') ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+        }
+
+        function toggleNav() {
+            document.querySelector('.nav-links').classList.toggle('nav-active');
+            document.querySelector('.burger').classList.toggle('toggle');
+        }
+
+        function toggleInfo() {
+            document.getElementById('infoModal').classList.toggle('active');
+        }
+    </script>
+</body>
+</html>
