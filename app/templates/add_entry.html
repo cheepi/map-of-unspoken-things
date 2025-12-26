@@ -40,7 +40,7 @@
                 <div class="music-search-box">
                     <div style="display:flex; gap:10px;">
                         <input type="text" id="musicQuery" placeholder="judul (+ artis kalau perlu)..." style="margin-bottom:0;" autocomplete="off">
-                        <button type="button" onclick="searchMusic()" class="btn-search-icon"><i class="fas fa-search"></i></button>
+                        <!-- <button type="button" onclick="searchMusic()" class="btn-search-icon"><i class="fas fa-search"></i></button> -->
                     </div>
                     
                     <div id="musicResults" class="music-results"></div>
@@ -51,7 +51,7 @@
                             <strong id="preview-title" style="display: block; font-size: 0.9rem; color: white;">Judul</strong>
                             <small id="preview-artist" style="color: #aaa; font-size: 0.8rem;">Artis</small>
                         </div>
-                        <!-- <button type="button" onclick="clearSpotify()" style="background: none; border: none; color: #ff4d4d; cursor: pointer;"><i class="fas fa-times"></i></button> -->
+                        <button type="button" onclick="clearSpotify()" style="background: none; border: none; color: #ff4d4d; cursor: pointer;"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
 
@@ -238,12 +238,12 @@
 
         document.getElementById('musicQuery').addEventListener('input', searchMusic);
         
-        document.getElementById('musicQuery').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                searchMusic();
-            }
-        });
+        // document.getElementById('musicQuery').addEventListener('keypress', function (e) {
+        //     if (e.key === 'Enter') {
+        //         e.preventDefault();
+        //         searchMusic();
+        //     }
+        // });
 
         document.addEventListener('click', function(e) {
             const searchBox = document.querySelector('.music-search-box');

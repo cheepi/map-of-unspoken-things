@@ -308,7 +308,7 @@
                             </div>
                         </div>
 
-                        <div class="popup-scrollable-content">
+                        <div class="popup-scrollable-content">                            
                             ${spotifyEmbed}
 
                             <p class="popup-text">
@@ -318,6 +318,9 @@
                             <div style="font-size: 0.85rem; margin-top: 8px;">
                                 ${tagsHtml}
                             </div>
+
+                            ${item.image_url ? `<img src="${item.image_url}" style="width:100%; border-radius:12px; margin-bottom:15px; object-fit:cover; max-height:150px;">` : ''}
+
                         </div>
                     </div>
                 `;
