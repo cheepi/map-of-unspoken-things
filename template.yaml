@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "mouthings-final"
+
+Parameters:
+  KeyName: {Type: "AWS::EC2::KeyPair::KeyName"}
+  DBUser: {Type: String, Default: "mou_admin"}
+  DBPassword: {Type: String, NoEcho: true}
+  SpotifyID: {Type: String}
+  SpotifySecret: {Type: String}
+
+Resources:
+  DatabaseUAS:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: '20'
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      DBName: mouthingsdb
+      MasterUsername: !Ref DBUser
+      MasterUserPassword: !Ref DBPassword
+      PubliclyAccessible: true
+      VPCSecurityGroups: [!GetAtt DBSG.GroupId]
+
+  ServerUAS:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0c101f26f147fa7fd 
+      KeyName: !Ref KeyName
+      SecurityGroupIds: [!GetAtt WebSG.GroupId]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # set timezone ke jakarta
+          ln -sf /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+          
+          # update dan install paket
+          dnf update -y
+          dnf install -y python3-pip git libpq-devel gcc python3-devel postgresql15
+          
+          # setup folder dan clone repo aplikasi
+          cd /home/ec2-user
+          git clone https://github.com/cheepi/map-of-unspoken-things.git
+          cd map-of-unspoken-things
+          sudo pip3 install -r requirements.txt gunicorn psycopg2-binary
+          
+          # otomatisasi db (table, columns, & stats view)
+          export PGPASSWORD="${DBPassword}"
+          psql -h ${DatabaseUAS.Endpoint.Address} -U ${DBUser} -d mouthingsdb <<EOF
+          CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username VARCHAR(255) UNIQUE NOT NULL, password TEXT NOT NULL, profile_pic TEXT);
+          CREATE TABLE IF NOT EXISTS tags (id SERIAL PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL);
+          CREATE TABLE IF NOT EXISTS entries (
+            id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL, description TEXT, image_url TEXT, gmaps_link TEXT, spotify_url TEXT,
+            pin_color VARCHAR(50) DEFAULT '#ff4757', latitude FLOAT, longitude FLOAT, active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS entry_tags (entry_id INTEGER REFERENCES entries(id), tag_id INTEGER REFERENCES tags(id), PRIMARY KEY(entry_id, tag_id));
+          CREATE OR REPLACE VIEW user_summary AS
+          SELECT u.id AS user_id, u.username, COUNT(DISTINCT e.id) AS entry_count, COUNT(DISTINCT t.id) AS tag_count
+          FROM users u LEFT JOIN entries e ON u.id = e.user_id AND e.active = 1
+          LEFT JOIN entry_tags et ON e.id = et.entry_id LEFT JOIN tags t ON et.tag_id = t.id
+          GROUP BY u.id, u.username;
+          EOF
+
+          # run gunicorn
+          sudo TZ="Asia/Jakarta" \
+          DB_HOST="${DatabaseUAS.Endpoint.Address}" \
+          DB_NAME="mouthingsdb" \
+          DB_USER="${DBUser}" \
+          DB_PASS="${DBPassword}" \
+          DB_PORT="5432" \
+          SPOTIFY_CLIENT_ID="${SpotifyID}" \
+          SPOTIFY_CLIENT_SECRET="${SpotifySecret}" \
+          SECRET_KEY="uas-final-beres-banget" \
+          DATABASE_URL="postgresql://${DBUser}:${DBPassword}@${DatabaseUAS.Endpoint.Address}:5432/mouthingsdb?sslmode=require" \
+          python3 -m gunicorn --bind 0.0.0.0:80 --timeout 120 run:app &
+
+  WebSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "akses web http & ssh"
+      SecurityGroupIngress:
+        - {IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0}
+        - {IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: 0.0.0.0/0}
+
+  DBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "akses db postgre"
+      SecurityGroupIngress:
+        - {IpProtocol: tcp, FromPort: 5432, ToPort: 5432, CidrIp: 0.0.0.0/0}
+
+Outputs:
+  WebsiteURL:
+    Description: "it's live!"
+    Value: !Sub http://${ServerUAS.PublicIp}
