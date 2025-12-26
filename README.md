@@ -61,10 +61,10 @@ Lihat demonstrasi teknis verifikasi infrastruktur dan fungsionalitas **MOUThings
 ---
 
 ## 🛠️ Tech Stack
-* **Backend**: Python 3 (Flask Framework).
-* **Frontend**: HTML5, CSS3, JavaScript (Leaflet.js).
-* **Database**: PostgreSQL (Amazon RDS).
-* **Web Server**: Gunicorn & AWS EC2 (t2.micro).
+* **Backend**: Python 3 (Flask Framework)
+* **Frontend**: HTML5, CSS3, JavaScript (Leaflet.js)
+* **Database**: PostgreSQL (Amazon RDS)
+* **Web Server**: Gunicorn & AWS EC2 (t2.micro)
 
 ---
 
