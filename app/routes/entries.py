@@ -177,12 +177,12 @@ def edit_entry(id):
     existing_tags = ', '.join(tags_list)
 
     if request.method == 'POST':
-        new_spot = request.form.get('spotify_link')
+        new_spot = request.form.get('spotify_link', '').strip()
         
         if new_spot:
             spot_url = new_spot.split('?')[0]
         else:
-            spot_url = entry['spotify_url']
+            spot_url = None
 
         cur.execute('''
             UPDATE entries 

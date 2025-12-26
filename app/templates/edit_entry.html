@@ -269,9 +269,14 @@
         }
 
         function clearSpotify() {
-            document.getElementById('spotify_link').value = '';
+            const spotifyInput = document.getElementById('spotify_link');
+            spotifyInput.value = ""; 
+            spotifyInput.setAttribute('value', "");
             document.getElementById('spotify-preview').style.display = 'none';
             document.getElementById('musicQuery').placeholder = 'Cari lagu baru...';
+            document.getElementById('musicQuery').value = '';
+
+            console.log("Spotify Link cleared! Value sekarang:", spotifyInput.value);
         }
 
         window.addEventListener('DOMContentLoaded', () => {
